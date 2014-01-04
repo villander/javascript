@@ -2580,7 +2580,7 @@ console.log    || (
 var db = (function(){
     var ls = null;
     try {
-        window['localStorage'];
+        ls = window['localStorage'];
     } catch (e) {}
     return {
         'get' : function(key) {
