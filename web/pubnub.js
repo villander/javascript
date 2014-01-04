@@ -2578,7 +2578,10 @@ console.log    || (
  * LOCAL STORAGE OR COOKIE
  */
 var db = (function(){
-    var ls = window['localStorage'];
+    var ls = null;
+    try {
+        window['localStorage'];
+    } catch (e) {}
     return {
         'get' : function(key) {
             try {
