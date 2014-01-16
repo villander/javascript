@@ -23,7 +23,7 @@ function rnow()   { return+new Date }
  * ==========
  * var next_origin = nextorigin();
  */
-var nextorigin = (function() {
+var nextorigin_cache_busting = (function() {
     var max = 20
     ,   ori = Math.floor(Math.random() * max);
     return function( origin, failover ) {
@@ -201,8 +201,7 @@ function PN_API(setup) {
     ,   hmac_SHA256   = setup['hmac_SHA256']
     ,   SSL           = setup['ssl']            ? 's' : ''
     ,   ORIGIN        = 'http'+SSL+'://'+(setup['origin']||'pubsub.pubnub.com')
-    ,   STD_ORIGIN    = nextorigin(ORIGIN)
-    ,   SUB_ORIGIN    = nextorigin(ORIGIN)
+    ,   ORIGINS       = setup['origins'] || ['pubsub.pubnub.com']
     ,   CONNECT       = function(){}
     ,   PUB_QUEUE     = []
     ,   TIME_DRIFT    = 0
@@ -214,6 +213,7 @@ function PN_API(setup) {
     ,   TIMETOKEN     = 0
     ,   RESUMED       = false
     ,   CHANNELS      = {}
+    ,   CACHE_BUSTING = false
     ,   PRESENCE_HB_TIMEOUT  = null
     ,   PRESENCE_HB_INTERVAL = validate_presence_heartbeat(setup['pnexpires'] || 0, setup['error'])
     ,   PRESENCE_HB_RUNNING  = false
@@ -225,6 +225,27 @@ function PN_API(setup) {
     ,   db            = setup['db']         || {'get': function(){}, 'set': function(){}}
     ,   CIPHER_KEY    = setup['cipher_key']
     ,   UUID          = setup['uuid'] || ( db && db['get'](SUBSCRIBE_KEY+'uuid') || '');
+
+    var nextorigin_ha = (function() {
+        var cur = 0;
+        return function(origins) {
+            //console.log(JSON.stringify(origins));
+            if (!origins || !origins[0]) return nextorigin_cache_busting(origins);
+            var len = origins.length;
+            return 'http'+SSL+'://' + ( origins[++cur % origins.length]  || origins[0] || 'pubsub.pubnub.com');
+        }
+    })();
+
+    var nextorigin = function(domain,failover) {
+        //console.log(CACHE_BUSTING);
+        if (CACHE_BUSTING)
+            return nextorigin_cache_busting(domain, failover);
+        else
+            return nextorigin_ha(ORIGINS);
+    };
+
+    var STD_ORIGIN    = nextorigin(ORIGINS || ORIGIN)
+    ,   SUB_ORIGIN    = nextorigin(ORIGINS || ORIGIN);
 
     var crypto_obj    = setup['crypto_obj'] ||
         {
@@ -337,10 +358,20 @@ function PN_API(setup) {
 
     // Announce Leave Event
     var SELF = {
+        'add_origin' : function(origin) {
+            ORIGINS.push(origin);
+        },
+        'remove_origin' : function(origin) {
+            for (var a in ORIGINS) {
+                if (ORIGINS[a] === origin) {
+                    ORIGINS[a] = false;
+                }
+            }
+        },
         'LEAVE' : function( channel, blocking, callback, error ) {
 
             var data   = { 'uuid' : UUID, 'auth' : AUTH_KEY }
-            ,   origin = nextorigin(ORIGIN)
+            ,   origin = nextorigin(ORIGINS || ORIGIN)
             ,   callback = callback || function(){}
             ,   err      = error    || function(){}
             ,   jsonp  = jsonp_cb();
@@ -721,8 +752,8 @@ function PN_API(setup) {
                 }
                 else {
                     // New Origin on Failed Connection
-                    STD_ORIGIN = nextorigin( ORIGIN, 1 );
-                    SUB_ORIGIN = nextorigin( ORIGIN, 1 );
+                    STD_ORIGIN = nextorigin( ORIGINS || ORIGIN, 1 );
+                    SUB_ORIGIN = nextorigin( ORIGINS || ORIGIN, 1 );
 
                     // Re-test Connection
                     timeout( function() {
@@ -905,7 +936,7 @@ function PN_API(setup) {
                 success  : function(response) {
                     _invoke_callback(response, callback, err);
                 },
-                fail     : function(resonse) {
+                fail     : function(response) {
                     _invoke_error(response, err);
                 },
                 url      : url
