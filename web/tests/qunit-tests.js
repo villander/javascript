@@ -1210,9 +1210,9 @@ function in_list(list,str) {
     return false;
  }
 
- function in_list_deep(list,str) {
+ function in_list_deep(list,obj) {
     for (var x in list) {
-        if (JSON.stringify(list[x]) === JSON.stringify(str)) return true;
+        if (_.isEqual(list[x], obj)) return true;
     }
     return false;
  }
@@ -1300,7 +1300,6 @@ asyncTest("#where_now() should return channel x in result for uuid y, when uuid 
                 pubnub_pres.where_now({
                     uuid: uuid,
                     callback : function(data) {
-                        console.log(JSON.stringify(data));
                         ok(in_list(data.channels,ch), "subscribed Channel should be there in where now list");
                         pubnub_pres.unsubscribe({channel : ch});
                         start();
@@ -2028,7 +2027,6 @@ asyncTest("#here_now() should return correct state for multiple uuids in single 
                                                 state : true,
                                                 callback : function(response) {
                                                     ok(response.channels[ch], "subscribed channel should be present in payload");
-                                                    console.log(response.channels[ch]);
                                                     ok(in_list_deep(response.channels[ch].uuids, { uuid : uuid + '', state : { 'name' : 'name-' + uuid } } ), "uuid should be there in the uuids list");
                                                     ok(in_list_deep(response.channels[ch].uuids,{ uuid : uuid1 + '', state : {name : 'name-' + uuid1}}), "uuid 1 should be there in the uuids list");
                                                     ok(in_list_deep(response.channels[ch].uuids,{ uuid : uuid2 + '', state : {name : 'name-' + uuid2}}), "uuid 2 should be there in the uuids list");
