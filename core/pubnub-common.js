@@ -786,9 +786,9 @@ function PN_API(setup) {
                 var data = { 'uuid' : UUID, 'auth' : auth_key };
       
                 var st = JSON.stringify(STATE);
-                if (st.length > 2) data['metadata'] = JSON.stringify(STATE);
+                if (st.length > 2) data['state'] = JSON.stringify(STATE);
 
-                if (PRESENCE_HB) data['pnexpires'] = PRESENCE_HB;
+                if (PRESENCE_HB) data['heartbeat'] = PRESENCE_HB;
                 start_presence_heartbeat();
                 SUB_RECEIVER = xdr({
                     timeout  : sub_timeout,
@@ -913,7 +913,7 @@ function PN_API(setup) {
             ,   data     = { 'uuid' : UUID, 'auth' : auth_key };
 
             if (!uuids) data['disable_uuids'] = 1;
-            if (state) data['metadata'] = 1;
+            if (state) data['state'] = 1;
 
             // Make sure we have a Channel
             if (!callback)      return error('Missing Callback');
@@ -995,7 +995,7 @@ function PN_API(setup) {
 
             if (CHANNELS[channel] && CHANNELS[channel].subscribed) STATE[channel] = state;
 
-            data['metadata'] = JSON.stringify(state);
+            data['state'] = JSON.stringify(state);
 
             if (state) {
                 url      = [
@@ -1196,7 +1196,7 @@ function PN_API(setup) {
             var data     = { 'uuid' : UUID, 'auth' : AUTH_KEY };
 
             var st = JSON['stringify'](STATE);
-            if (st.length > 2) data['metadata'] = JSON['stringify'](STATE);
+            if (st.length > 2) data['state'] = JSON['stringify'](STATE);
 
             xdr({
                 callback : jsonp,
