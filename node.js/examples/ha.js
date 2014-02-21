@@ -13,6 +13,9 @@
         'origin_heartbeat_interval'                 : 30,
         'origin_heartbeat_max_retries'              : 3,
         'origin_heartbeat_interval_after_failure'   : 15,
+        'error'                                     : function(r) { console.log('PUBNUB ERROR : ' + JSON.stringify(r))},
+        'origin_heartbeat_callback'                 : function(r) { console.log('PUBNUB HEARTBEAT SUCCESS : ' + JSON.stringify(r))},
+        'origin_heartbeat_error_callback'           : function(r) { console.log('PUBNUB HEARTBEAT FAILURE : ' + JSON.stringify(r))},
         'origins'                                   : [   
                     'geo1.devbuild.pubnub.com','geo2.devbuild.pubnub.com',
                     'geo3.devbuild.pubnub.com','geo4.devbuild.pubnub.com' ]
@@ -21,7 +24,7 @@
 Listen for Messages
 --------------------------------------------------------------------------- */
 pubnub.subscribe({
-    channel  : "a",
+    channel  : "mychannel",
     callback : function(message) {
         console.log( " > ", message );
     },
@@ -34,7 +37,6 @@ pubnub.subscribe({
     reconnect : function(message) {
         console.log( " RECONNECT > ", message );
     },
-    restore : true,
     error : function(r) {
      console.log(JSON.stringify(r));
  }

@@ -232,6 +232,8 @@ function PN_API(setup) {
     ,   jsonp_cb      = setup['jsonp_cb']   || function() { return 0 }
     ,   db            = setup['db']         || {'get': function(){}, 'set': function(){}}
     ,   CIPHER_KEY    = setup['cipher_key']
+    ,   origin_hb_callback       = setup['origin_heartbeat_callback']
+    ,   origin_hb_error_callback = setup['origin_heartbeat_error_callback']    
     ,   UUID          = setup['uuid'] || ( db && db['get'](SUBSCRIBE_KEY+'uuid') || '');
 
     var crypto_obj    = setup['crypto_obj'] ||
@@ -327,7 +329,7 @@ function PN_API(setup) {
         STD_ORIGIN = nextorigin(ORIGINS || ORIGIN, ++cur);
         SUB_ORIGIN = nextorigin(ORIGINS || ORIGIN, cur);
         console.log('CHANGE origin to ' + SUB_ORIGIN);
-        _reset_offline( 1, { "error" : "Attempt No. " + retry_no + " : Origin Heartbeat failed to connect to " + SUB_ORIGIN});
+        _reset_offline( 1, { "error" : {message : "Heartbeat Failed", origin : SUB_ORIGIN, 'heartbeat_retry_number' : retry_no }});
 
         each_channel(function(channel){
             // Disconnect
@@ -336,7 +338,6 @@ function PN_API(setup) {
                 channel.disconnect(channel.name);
             }
         });
-        //console.log('RESET attemtps');
         retry_no = 1;
         CONNECT();
     }
@@ -351,35 +352,30 @@ function PN_API(setup) {
         }
 
         ORIGIN_HB_RUNNING = true;
-        console.log("Trying Attempt no. " + retry_no + " to " + SUB_ORIGIN);
         SELF['origin_heartbeat']({
             'callback' : function(r) {
-                console.log("Attempt no. " + retry_no + " successful. " + SUB_ORIGIN);
+                origin_hb_callback && origin_hb_callback({'timetoken' : r, 'heartbeat_retry_number' : retry_no});
                 retry_no = 1;
-                //console.log('RESET attemtps');
-                //console.log('schedule hb ' + 1);
                 ORIGIN_HB_TIMEOUT = timeout( _origin_heartbeat, (ORIGIN_HB_INTERVAL) * SECOND );
             },
             'error' : function(e) {
-                error && error("Attempt No. " + retry_no + " : Origin Heartbeat unable to reach origin. " + SUB_ORIGIN);
+                origin_hb_error_callback && 
+                origin_hb_error_callback({"origin" : SUB_ORIGIN, 'heartbeat_retry_number' : retry_no});
+
+                !origin_hb_error_callback && 
+                error && 
+                error({"origin" : SUB_ORIGIN, 'heartbeat_retry_number' : retry_no});
+
                 if (reset || ORIGIN_HB_MAX_RETRIES === 1) {
                     _reset();
-                    //console.log('RESET attemtps');
                     retry_no = 1;
-                    //console.log('schedule hb ' + 2);
                     ORIGIN_HB_TIMEOUT = timeout( _origin_heartbeat, ORIGIN_HB_INTERVAL * SECOND );
                 } else {
                     retry_no++;
                     if (retry_no < ORIGIN_HB_MAX_RETRIES) {
-                        //console.log('schedule hb ' + 3);
                         ORIGIN_HB_TIMEOUT = timeout( _origin_heartbeat, ORIGIN_HB_INTERVAL_AFTER_FAILURE * SECOND );
                     } else {
-                        //console.log('schedule hb ' + 4);
-                        ORIGIN_HB_TIMEOUT = timeout(
-                            function() {
-                                _origin_heartbeat(1)
-                            },
-                        ORIGIN_HB_INTERVAL_AFTER_FAILURE * SECOND );
+                        ORIGIN_HB_TIMEOUT = timeout(function() { _origin_heartbeat(1) },ORIGIN_HB_INTERVAL_AFTER_FAILURE * SECOND );
                     }
                 }
             }
