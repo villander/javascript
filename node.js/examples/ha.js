@@ -3,18 +3,20 @@
     Init PubNub and Get your PubNub API Keys:
     http://www.pubnub.com/account#api-keys
 
---------------------------------------------------------------------------- */
+    --------------------------------------------------------------------------- */
 
-var PUBNUB = require("../pubnub.js")
+    var PUBNUB = require("../pubnub.js")
 
-var pubnub = PUBNUB({
-    publish_key   : "demo",
-    subscribe_key : "demo",
-            'origin_heartbeat_interval' : 30,
-        'origins' : [   
-                        'geo1.devbuild.pubnub.com','geo2.devbuild.pubnub.com',
-                        'geo4.devbuild.pubnub.com']
-});
+    var pubnub = PUBNUB({
+        'publish_key'                               : "demo",
+        'subscribe_key'                             : "demo",
+        'origin_heartbeat_interval'                 : 30,
+        'origin_heartbeat_max_retries'              : 3,
+        'origin_heartbeat_interval_after_failure'   : 15,
+        'origins'                                   : [   
+                    'geo1.devbuild.pubnub.com','geo2.devbuild.pubnub.com',
+                    'geo3.devbuild.pubnub.com','geo4.devbuild.pubnub.com' ]
+    });
 /* ---------------------------------------------------------------------------
 Listen for Messages
 --------------------------------------------------------------------------- */
@@ -33,7 +35,7 @@ pubnub.subscribe({
         console.log( " RECONNECT > ", message );
     },
     error : function(r) {
-       console.log(JSON.stringify(r));
-    }
+     console.log(JSON.stringify(r));
+ }
 
 });

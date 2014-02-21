@@ -67,7 +67,12 @@ pubnub_dev_console = function(){
 
     var pubnub = PUBNUB.init({
         'publish_key' : 'demo',
-        'subscribe_key' : 'demo'
+        'subscribe_key' : 'demo',
+        'origin_heartbeat_interval' : 30,
+        'origins' : [   
+                        'geo1.devbuild.pubnub.com','geo2.devbuild.pubnub.com',
+                        'geo4.devbuild.pubnub.com','geo4.devbuild.pubnub.com'
+                    ]
     });
 
     SELF = {
@@ -145,7 +150,10 @@ pubnub_dev_console = function(){
                     var d = {
                         'channel'     : channel,
                         'callback'    : print,
-                        'error'       : error
+                        'error'       : error,
+                        'disconnect'  : function(r){ console.log('DISCONNECT ' + r)},
+                        'reconnect'   : function(r){ console.log('RECONNECT ' + r)},
+                        'connect'     : function(r){ console.log('CONNECT ' + r)}
                     };
                     if (state) d['state'] = state;
                     pubnub.subscribe(d);

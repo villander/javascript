@@ -223,6 +223,7 @@ function PN_API(setup) {
     ,   ORIGIN_HB_TIMEOUT     = null
     ,   ORIGIN_HB_INTERVAL    = setup['origin_heartbeat_interval'] || 60
     ,   ORIGIN_HB_MAX_RETRIES = setup['origin_heartbeat_max_retries'] || 2
+    ,   ORIGIN_HB_INTERVAL_AFTER_FAILURE = setup['origin_heartbeat_interval_after_failure'] || 10
     ,   ORIGIN_HB_RUNNING     = false
     ,   NO_WAIT_FOR_PENDING   = setup['no_wait_for_pending']
     ,   xdr           = setup['xdr']
@@ -322,6 +323,24 @@ function PN_API(setup) {
         !PRESENCE_HB_RUNNING && _presence_heartbeat();
     }
 
+    function _reset() {
+        STD_ORIGIN = nextorigin(ORIGINS || ORIGIN, ++cur);
+        SUB_ORIGIN = nextorigin(ORIGINS || ORIGIN, cur);
+        console.log('CHANGE origin to ' + SUB_ORIGIN);
+        _reset_offline( 1, { "error" : "Attempt No. " + retry_no + " : Origin Heartbeat failed to connect to " + SUB_ORIGIN});
+
+        each_channel(function(channel){
+            // Disconnect
+            if (channel.connected && !channel.disconnected) {
+                channel.disconnected = 1;
+                channel.disconnect(channel.name);
+            }
+        });
+        //console.log('RESET attemtps');
+        retry_no = 1;
+        CONNECT();
+    }
+
     function _origin_heartbeat(reset) {
 
         clearTimeout(ORIGIN_HB_TIMEOUT);
@@ -343,41 +362,24 @@ function PN_API(setup) {
             },
             'error' : function(e) {
                 error && error("Attempt No. " + retry_no + " : Origin Heartbeat unable to reach origin. " + SUB_ORIGIN);
-                if (reset) {
-                    reset();
+                if (reset || ORIGIN_HB_MAX_RETRIES === 1) {
+                    _reset();
                     //console.log('RESET attemtps');
                     retry_no = 1;
                     //console.log('schedule hb ' + 2);
                     ORIGIN_HB_TIMEOUT = timeout( _origin_heartbeat, ORIGIN_HB_INTERVAL * SECOND );
                 } else {
                     retry_no++;
-                    if (retry_no < ORIGIN_HB_MAX_RETRIES - 1 ) {
+                    if (retry_no < ORIGIN_HB_MAX_RETRIES) {
                         //console.log('schedule hb ' + 3);
-                        ORIGIN_HB_TIMEOUT = timeout( _origin_heartbeat, 10 * SECOND );
+                        ORIGIN_HB_TIMEOUT = timeout( _origin_heartbeat, ORIGIN_HB_INTERVAL_AFTER_FAILURE * SECOND );
                     } else {
                         //console.log('schedule hb ' + 4);
                         ORIGIN_HB_TIMEOUT = timeout(
                             function() {
-                                _origin_heartbeat(function(){
-                                    STD_ORIGIN = nextorigin(ORIGINS || ORIGIN, ++cur);
-                                    SUB_ORIGIN = nextorigin(ORIGINS || ORIGIN, cur);
-                                    console.log('CHANGE origin to ' + SUB_ORIGIN);
-                                    _reset_offline( 1, { "error" : "Attempt No. " + retry_no + " : Origin Heartbeat failed to connect to " + SUB_ORIGIN});
-
-                                    each_channel(function(channel){
-                                        // Disconnect
-                                        if (channel.connected && !channel.disconnected) {
-                                            channel.disconnected = 1;
-                                            channel.disconnect(channel.name);
-                                        }
-                                    });
-                                    //console.log('RESET attemtps');
-                                    retry_no = 1;
-                                    CONNECT();
-
-                                })
+                                _origin_heartbeat(1)
                             },
-                        10 * SECOND );
+                        ORIGIN_HB_INTERVAL_AFTER_FAILURE * SECOND );
                     }
                 }
             }
