@@ -326,10 +326,11 @@ function PN_API(setup) {
     }
 
     function _reset() {
+        var old_origin = SUB_ORIGIN;
         STD_ORIGIN = nextorigin(ORIGINS || ORIGIN, ++cur);
         SUB_ORIGIN = nextorigin(ORIGINS || ORIGIN, cur);
-        console.log('CHANGE origin to ' + SUB_ORIGIN);
-        _reset_offline( 1, { "error" : {message : "Heartbeat Failed", origin : SUB_ORIGIN, 'heartbeat_retry_number' : retry_no }});
+        origin_hb_error_callback && origin_hb_error_callback({ 'error' : 'switching origin', "old_origin" : old_origin, "new_origin" : SUB_ORIGIN});
+        _reset_offline( 1, { "error" : {message : "Heartbeat Failed. Changing Origin", old_origin : old_origin,  new_origin : SUB_ORIGIN}});
 
         each_channel(function(channel){
             // Disconnect
@@ -917,7 +918,6 @@ function PN_API(setup) {
                             errcb(messages['error']);
                             return timeout( CONNECT, SECOND );
                         }
-                        //console.log(SUB_ORIGIN);
                         // User Idle Callback
                         idlecb(messages[1]);
 
