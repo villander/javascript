@@ -21,7 +21,7 @@
 Listen for Messages
 --------------------------------------------------------------------------- */
 pubnub.subscribe({
-    channel  : "mychannel",
+    channel  : "a",
     callback : function(message) {
         console.log( " > ", message );
     },
@@ -34,6 +34,7 @@ pubnub.subscribe({
     reconnect : function(message) {
         console.log( " RECONNECT > ", message );
     },
+    restore : true,
     error : function(r) {
      console.log(JSON.stringify(r));
  }

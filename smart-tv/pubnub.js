@@ -1149,7 +1149,7 @@ function PN_API(setup) {
             }
 
             CONNECT = function() {
-                TIMETOKEN = 0;
+                if (!SUB_RESTORE) TIMETOKEN = 0;
                 _reset_offline();
                 timeout( _connect, windowing );
             };
