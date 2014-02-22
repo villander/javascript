@@ -354,7 +354,7 @@ function PN_API(setup) {
         ORIGIN_HB_RUNNING = true;
         SELF['origin_heartbeat']({
             'callback' : function(r) {
-                origin_hb_callback && origin_hb_callback({'timetoken' : r, 'heartbeat_retry_number' : retry_no});
+                origin_hb_callback && origin_hb_callback({'timetoken' : r, 'origin' : SUB_ORIGIN, 'heartbeat_retry_number' : retry_no});
                 retry_no = 1;
                 ORIGIN_HB_TIMEOUT = timeout( _origin_heartbeat, (ORIGIN_HB_INTERVAL) * SECOND );
             },
