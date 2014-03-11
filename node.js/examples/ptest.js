@@ -1,210 +1,401 @@
-var clOptions = [];
-var config = {};
+// These settings must match on both Actor and Listener
+var publicRandomSuffix = Math.floor((Math.random() * 100000) + 1);
 
-process.argv.forEach(function (val, index, array) {
-    //console.log(index + ': ' + val);
-    clOptions[index] = val;
+var publicChannel = "testingPub1";
+var publicSub = "demo";
+var publicPub = "demo";
+var listenerUUID = "PN_LISTENER" + publicRandomSuffix;
+
+var publicListenerProduction = require("./pubnub-3.5.48.js").init({
+    origin: "pubnub.pubnub.com",
+    publish_key: publicPub,
+    subscribe_key: publicSub,
+    uuid: listenerUUID
+}), exec = require('child_process').exec;
+
+
+publicListenerProduction.subscribe({
+    noheresync: true,
+    channel: publicChannel,
+    message: onPublicListenerMessage,
+    connect: function (ch) {
+        console.log("Listener Connected.");
+    }
 });
 
-var keysets = {
+function onPublicListenerMessage(m) {
+    console.log("Listener heard Message: " + m);
+    if (m.test && m.platform && m.actorID) {
 
-    "keyset1": {
-        "pub": "pub-c-fb5fa283-0d93-424f-bf86-d9aca2366c86",
-        "sub": "sub-c-d247d250-9dbd-11e3-8008-02ee2ddab7fe",
-        "sec": "sec-c-MmI2YjRjODAtNWU5My00ZmZjLTg0MzUtZGM1NGExNjJkNjg1",
-        "description": "Compatibility Mode ON"
-    },
+        l1 = new Listener(m);
+        a = 1;
 
-    "keyset2": {
-        "pub": "pub-c-c9b0fe21-4ae1-433b-b766-62667cee65ef",
-        "sub": "sub-c-d91ee366-9dbd-11e3-a759-02ee2ddab7fe",
-        "sec": "sec-c-ZDUxZGEyNmItZjY4Ny00MjJmLWE0MjQtZTQyMDM0NTY2MDVk",
-        "description": "Compatibility Mode OFF"
     }
-};
-
-var pubnub = {};
-
-// console.log(clOptions);
-//[ 0 'node',
-//  1  '/Users/gcohen/clients/javascript/node.js/examples/ptest.js',
-//  2  'keyset1',
-//  3  'beta',
-//  4  'gecA',
-//  5  'gecB' ]
+}
 
 
-function validateArgs(opts) {
 
-    if (opts.length < 6) {
-        usageOutput();
-    }
+//var publicListenerPresenceBeta = require("./pubnub-3.6.0beta.js").init({
+//    origin: "presence-beta.pubnub.com",
+//    publish_key: this.publicPub,
+//    subscribe_key: this.publicSub,
+//    uuid: this.listenerUUID
+//}), exec = require('child_process').exec;
 
-    // set keyset
-    if ((clOptions[2] == 1) || (clOptions[2] == 2)) {
-        if (clOptions[2] == 1) {
-            config.keyset = keysets.keyset1;
-        } else if (clOptions[2] == 2) {
-            config.keyset = keysets.keyset2;
+function Listener(config) {
+
+    // test config specific
+    // these attributes are defined by the Actor/Listener handshake
+
+    this.randomSuffix = Math.floor((Math.random() * 100000) + 1);
+    console.log("New Listener Instance " + this.randomSuffix + " created.");
+
+    this.actorUUID = config.actorID;
+    this.currentTest = config.test;
+
+    this.clientLevel = config.test.common.client;
+    this.serverLevel = config.test.common.server;
+
+    this.listenerInit = config.test.init.listener;
+
+    this.ssl = config.test.common.ssl;
+    this.pubKey = config.test.common.keyset.pubKey;
+    this.subKey = config.test.common.keyset.subKey;
+    this.keySetDescription  = config.test.common.keyset.description;
+
+    // instance specific
+    // these values can change during runtime
+
+    this.currentStep = 0;
+    this.numberOfSteps = 0;
+
+    this.alreadyConnected = false;
+    this.currentStep = "";
+
+    this.maxWaitTime = 0;
+    this.testResults = [];
+    this.stepInProgress = true;
+    this.stepInProgressInterval = 0;
+
+    // This is what the listener calls when he hears an event
+
+
+    function onActorPresenceEvent(msg, e, ch) {
+        if (msg.uuid != listenerUUID && msg.uuid == actorUUID) {
+            console.log("Listener heard Presence event: " + msg.action + " on " + msg.uuid + ": " + ch);
+
+            if (!testResults[currentStep]) {
+                testResults.push([]);
+            }
+
+            testResults[currentStep].push({step: currentStep, action: msg.action, uuid: msg.uuid, timestamp: msg.timestamp, channel: ch, date: new Date });
         }
-    } else {
-        usageOutput();
     }
-
-    // set env
-    if ((clOptions[3] == "beta") || (clOptions[3] == "prod")) {
-        if (clOptions[3] == "beta") {
-            config.origin = "presence-beta.pubnub.com";
-        } else {
-            config.origin = "pubsub.pubnub.com";
-        }
-
-    } else {
-        usageOutput();
-    }
-
-    // set channels
-    if (clOptions[4]) {
-        config.ch1 = clOptions[4];
-    }
-
-    if (clOptions[5]) {
-        config.ch2 = clOptions[5];
-    }
-
-    // set uuid
-    if (clOptions[6]) {
-        config.uuid = clOptions[6];
-    } else {
-        config.uuid = Math.random();
-    }
-
-    config.ssl = false;
-
-    if (clOptions[7] == 0) {
-        config.ssl = false;
-    } else if (clOptions[7] == 1) {
-        config.ssl = true;
-    }
-
-
-    initClientWithArgs(config);
-
-}
-
-validateArgs(clOptions);
-
-function usageOutput() {
-    console.log("\nUsage: " + clOptions[1] + " KEYSET ENVIRONMENT CHANNEL(S)");
-    console.log("KEYSET: 1 or 2");
-    console.log("ENVIRONMENT: prod or beta");
-    console.log("CH1");
-    console.log("CH2");
-    console.log("UUID");
-    console.log("SSL");
-    console.log("\n");
-    console.log("Example Usage: node ptest.js 1 beta gecA gecB myUUIDHere 0\n")
-    process.exit(1);
-}
-
-function connected() {
-    console.log("Connected.");
-}
-
-function initClientWithArgs(config) {
-    console.log("Using keyset " + config.keyset.description + " with keys " + config.keyset.sub + " " + config.keyset.pub);
-    console.log("Using environment " + config.origin + ".");
-    console.log("Setting ch1 to " + config.ch1);
-    console.log("Setting ch2 to " + config.ch2);
-    console.log("Setting UUID to " + config.uuid);
-    console.log("Setting SSL to " + config.ssl);
-
-
-    pubnub = require("./../pubnub.js").init({
-        origin: config.origin,
-        publish_key: config.keyset.pub,
-        subscribe_key: config.keyset.sub,
-        uuid: config.uuid
-    })
-
-
-
-
-
-
-
-
-        , exec = require('child_process').exec;
 }
 
 
-var readline = require('readline'),
-    rl = readline.createInterface(process.stdin, process.stdout);
+function pnInit(ssl, key, isListener) {
 
-rl.setPrompt('> ');
-rl.prompt();
+    var uuid = isListener ? listenerUUID : actorUUID;
+    var origin = (serverLevel == "3.6") ? "presence-beta.pubnub.com" : "pubsub.pubnub.com";
 
-rl.on('line',function (line) {
-    switch (line.trim()) {
-        case 'suba':
-            console.log('Subscribing to ' + config.ch1);
-            subscribe(config.ch1);
-            break;
-        case 'subb':
-            console.log('Subscribing to ' + config.ch2);
-            subscribe(config.ch2);
-            break;
-        case 'unsuba':
-            console.log('UnSubscribing to ' + config.ch1);
-            unsubscribe(config.ch1);
-            break;
-        case'subab':
-            console.log('Subscribing to ' + config.ch1 + " and " + config.ch2 + ".");
-            subscribe([config.ch1,config.ch2].join(","));
-            break;
-
-        default:
-            break;
-    }
-    rl.prompt();
-}).on('close', function () {
-        console.log('BYE BYE!');
-        process.exit(0);
+    var pubnub = PUBNUB.init({
+        publish_key: 'demo',
+        subscribe_key: key,
+        origin: origin,
+        ssl: ssl,
+        "compatible_3.5": extraCompat,
+        uuid: uuid
     });
 
-
-function displayPresenceEvent(message, channel) {
-    console.log("");
-    console.log(message.timestamp + "> " + message.action + " on channel " + channel + " by: " + message.uuid );
+    console.log(uuid + ": " + key + "\nOrigin: " + origin + "\nClient level: " + clientLevel + "\nServer level: " + serverLevel + "\nCompat: " + true + "\nClient extra compat flag: " + extraCompat + "\nSSL: " + ssl);
+    return pubnub;
 }
 
-function subscribe(ch) {
-    pubnub.subscribe({
-        channel: ch,
-        noheresync: 1,
+function waitForPNLoad() {
+    if (pnLoading) {
+        console.log("Waiting for PN to finish loading.");
+        //pnLoadedInterval = setInterval(waitForPNLoad, 1000);
+    } else {
+        console.log("\nInitializing listener and actor instances.");
+        clearInterval(pnLoadedInterval);
+
+        randomSuffix = Math.floor((Math.random() * 10000) + 1);
+
+        actorUUID = actorUUID + randomSuffix;
+        listenerUUID = listenerUUID + randomSuffix;
+
+        listener = pnInit(ssl, subKey, true);
+        actor = pnInit(ssl, subKey, false);
+
+        startCurrentTest();
+    }
+}
+
+
+function initTest(testNub) {
+    console.log("Running test: " + testNub.common.description + "\n");
+    currentTest = testNub;
+    ssl = testNub.common.ssl;
+    clientLevel = testNub.common.client;
+    serverLevel = testNub.common.server;
+    pubKey = testNub.common.keyset.pubKey;
+    subKey = testNub.common.keyset.subKey;
+    extraCompat = testNub.platformSpecific.JS_WEB.clientExtraCompatibilityFlag;
+    listenerInit = testNub.init.listener;
+
+    loadPNLib();
+}
+
+function startTestById(id) {
+    currentTestId = id;
+    initTest(tests[id]);
+}
+
+function waitForStepInProgress() {
+
+    if (stepInProgress) {
+        console.log("Still waiting for test to complete.");
+
+    } else {
+        clearInterval(stepInProgressInterval);
+
+        console.log("\n" + new Date + ": step " + currentStep + " complete.");
+
+        if (!testResults[currentStep]) {
+            testResults.push([
+                {step: currentStep, action: "nothing_happened", uuid: "none", timestamp: "none", "channel": "none", date: new Date}
+            ]);
+        }
+
+        for (a = 0; a < testResults[currentStep].length; a++) {
+            var stringResults = JSON.stringify(testResults[currentStep][a]);
+            console.log("\nStep " + currentStep + " results: " + stringResults + "\n");
+        }
+
+        currentStep++;
+        startNextStep();
+    }
+}
+
+function startCurrentTest() {
+    console.log("\nStarting test: " + currentTest.common.description);
+    alreadyConnected = false;
+    numberOfSteps = Object.keys(currentTest.steps).length;
+
+    startNextStep();
+}
+
+function logResultSummary() {
+    for (step = 0; step < testResults.length; step++) {
+        for (result = 0; result < testResults[step].length; result++) {
+            stringResult = JSON.stringify(testResults[step][result]);
+            console.log(stringResult);
+        }
+    }
+}
+
+function analyzeResults() {
+
+    for (step = 0; step < testResults.length; step++) {
+
+        var numExpectedResults = currentTest.steps[step].listener.length;
+        var numActualResults = testResults[step].length
+
+        var expectedTempArray = [];
+        var actualTempArray = [];
+
+        for (expected = 0; expected < currentTest.steps[step].listener.length; expected++) {
+            //console.log("Listener should have heard results: ");
+            //console.log(JSON.stringify(currentTest.steps[step].listener[step]));
+            expectedTempArray.push(currentTest.steps[step].listener[expected][0] + currentTest.steps[step].listener[expected][1]);
+        }
+
+        for (result = 0; result < testResults[step].length; result++) {
+            //console.log("Actor actual results were: ");
+            //console.log(JSON.stringify(testResults[step][result]));
+            actualTempArray.push(testResults[step][result].action + testResults[step][result].channel);
+        }
+
+        if (numActualResults == numExpectedResults) {
+            playSound('beep');
+            var row = document.getElementById('row-' + currentTestId);
+            row.className = "pass";
+            console.log("\nPASS: Step " + step + " numbers of actual/expected results are equal (" + numActualResults + ")\n");
+
+            while (expectedTempArray.length > 0) {
+                var actualIndex = actualTempArray.indexOf(expectedTempArray[0]);
+
+                if (actualIndex != -1) {
+                    actualTempArray.splice(actualIndex, 1);
+                }
+                expectedTempArray.splice(0, 1);
+
+            }
+
+            if (expectedTempArray.length == 0 && actualTempArray.length == 0) {
+                console.log("\nPASS: Step " + step + " literal results are equal.\n");
+            } else {
+                row.className = "fail";
+                console.log("\nFAIL: Step " + step + " literal results are NOT equal. Actual results that differed from expected are:");
+                console.log(JSON.stringify(actualTempArray) + "\n");
+            }
+        }
+
+        else {
+            var row = document.getElementById('row-' + currentTestId);
+            row.className = "fail";
+            console.log("\FAIL: Step " + step + " numbers of actual/expected results are equal (" + numActualResults + ")\n");
+        }
+    }
+}
+
+function startNextStep() {
+
+    stepInProgress = true;
+    maxWaitTime = 0;
+
+    if (currentStep + 1 > numberOfSteps) {
+        console.log("\n*** All Test Steps Complete! ***\n");
+
+        console.log("\nSummary of test results:");
+        logResultSummary();
+        analyzeResults();
+        return;
+    }
+
+    console.log("\nStep " + (currentStep) + ".");
+
+    var actorDelay = currentTest.steps[currentStep].actor[2];
+    var actorAction = currentTest.steps[currentStep].actor[0];
+    var actorChannel = currentTest.steps[currentStep].actor[1];
+
+    console.log("\nActor should wait " + actorDelay + " seconds to " + actorAction + " to channel " + actorChannel);
+    console.log("-- Then --");
+
+    for (a = 0; a < currentTest.steps[currentStep].listener.length; a++) {
+
+        var listenerTimeout = currentTest.steps[currentStep].listener[a][2];
+        var listenerExpectedEvent = currentTest.steps[currentStep].listener[a][0];
+        var listenerChannel = currentTest.steps[currentStep].listener[a][1];
+
+        console.log("Listener should wait up to " + listenerTimeout + " ms to receive a " + listenerExpectedEvent + " on channel " + listenerChannel);
+        if (listenerTimeout > maxWaitTime) {
+            maxWaitTime = listenerTimeout;
+        }
+    }
+
+    console.log("maxWaitTime set to: " + maxWaitTime + "\n");
+
+    stepInProgressInterval = setInterval(waitForStepInProgress, 5000);
+
+    setTimeout(function () {
+        stepInProgress = false;
+    }, maxWaitTime);
+
+    console.log("\n" + new Date + ": Starting step " + currentStep);
+
+    if (currentStep == 0) {
+        var initListener = true;
+    } else {
+        var initListener = false;
+    }
+
+    if (actorAction == "subscribe") {
+        subscribeToChannel(actorChannel, initListener)
+    } else if (actorAction == "unsubscribe") {
+        unsubscribeToChannel(actorChannel, initListener)
+    }
+}
+
+/* UNSUBSCRIBE */
+
+function unsubscribeToChannel(actorChannel, initListener) {
+    if (initListener) {
+
+        // Spawn the listener, then the actor
+        listener.subscribe({
+            noheresync: true,
+            channel: listenerInit[1],
+            message: onPublicListenerMessage,
+            presence: onActorPresenceEvent,
+            connect: function (ch) {
+                if (alreadyConnected) {
+                    console.log("Listener is already connected. Not doing that again.");
+                    return;
+                }
+
+                alreadyConnected = true;
+                console.log("Listener Connected.");
+                actorUnsubscribe(actorChannel)
+            }
+        });
+    } else {
+        // Just spawn the actor
+        actorUnsubscribe(actorChannel)
+    }
+}
+
+function actorUnsubscribe(channel) {
+    console.log("Unsubscribing actor...");
+    actor.unsubscribe({
+        channel: channel
+    });
+}
+
+
+/* SUBSCRIBE */
+
+function subscribeToChannel(actorChannel, initListener) {
+    if (initListener) {
+
+        // Spawn the listener, then the actor
+        listener.subscribe({
+            noheresync: true,
+            channel: listenerInit[1],
+            message: onPublicListenerMessage,
+            presence: onActorPresenceEvent,
+            connect: function (ch) {
+                if (alreadyConnected) {
+                    console.log("Listener is already connected. Not doing that again.");
+                    return;
+                }
+
+                alreadyConnected = true;
+                console.log("Listener Connected.");
+                actorSubscribe(actorChannel)
+            }
+        });
+    } else {
+        // Just spawn the actor
+        actorSubscribe(actorChannel)
+    }
+}
+
+function actorSubscribe(channel) {
+    console.log("Subscribing actor...");
+    actor.subscribe({
+        noheresync: true,
+        channel: channel,
+        message: function (m) {
+            console.log("Actor: msg received: " + m);
+        },
         connect: function () {
-            console.log("Connected to " + ch + ".");
-        },
-
-        callback: function (message) {
-            console.log(message);
-
-        },
-        error: function () {
-            console.log("Error.");
-        },
-
-        presence: function (message, env, channel) {
-            displayPresenceEvent(message, channel);
-            console.log("***");
+            console.log("Actor: Subscribe complete on channel " + channel + ".");
         }
-
     });
 }
 
-function unsubscribe(ch) {
-    pubnub.unsubscribe({
-        channel: ch
-    });
 
-}
+
+
+
+/* Start! */
+
+//initTest(tests[1]);
+
+
+
+
+
+
