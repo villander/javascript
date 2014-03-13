@@ -9,7 +9,7 @@ var actorID = "PN_ACTOR" + publicRandomSuffix;
 var channelA = "gecA";
 var channelB = "gecB";
 
-var pubnub = require("./../pubnub.js").init({
+var pubnub = require("../../pubnub.js").init({
     publish_key   : "demo",
     subscribe_key : "demo"
 })

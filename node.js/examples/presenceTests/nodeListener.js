@@ -6,13 +6,20 @@ var publicSub = "demo";
 var publicPub = "demo";
 var listenerUUID = "PN_LISTENER" + publicRandomSuffix;
 
-var publicListenerProduction = require("./pubnub-3.5.48.js").init({
-    origin: "pubnub.pubnub.com",
-    publish_key: publicPub,
-    subscribe_key: publicSub,
-    uuid: listenerUUID
-}), exec = require('child_process').exec;
+//var publicListenerProduction = require("./pubnub-3.5.48.js").init({
+//    origin: "pubnub.pubnub.com",
+//    publish_key: publicPub,
+//    subscribe_key: publicSub,
+//    uuid: listenerUUID
+//}), exec = require('child_process').exec;
 
+
+var publicListenerProduction = require("./pubnub-3.6.0.js").init({
+    origin: "pubsub.pubnub.com",
+    publish_key: this.publicPub,
+    subscribe_key: this.publicSub,
+    uuid: this.listenerUUID
+}), exec = require('child_process').exec;
 
 publicListenerProduction.subscribe({
     noheresync: true,
@@ -34,13 +41,6 @@ function onPublicListenerMessage(m) {
 }
 
 
-
-//var publicListenerPresenceBeta = require("./pubnub-3.6.0beta.js").init({
-//    origin: "presence-beta.pubnub.com",
-//    publish_key: this.publicPub,
-//    subscribe_key: this.publicSub,
-//    uuid: this.listenerUUID
-//}), exec = require('child_process').exec;
 
 function Listener(config) {
 
