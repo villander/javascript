@@ -25,7 +25,7 @@ function rnow()   { return+new Date }
  * ==========
  * var next_origin = nextorigin();
  */
-var nextorigin = (function() {
+var nextorigin_cache_busting = (function() {
     var max = 20
     ,   ori = Math.floor(Math.random() * max);
     return function( origin, failover ) {
@@ -209,8 +209,7 @@ function PN_API(setup) {
     ,   hmac_SHA256   = setup['hmac_SHA256']
     ,   SSL           = setup['ssl']            ? 's' : ''
     ,   ORIGIN        = 'http'+SSL+'://'+(setup['origin']||'pubsub.pubnub.com')
-    ,   STD_ORIGIN    = nextorigin(ORIGIN)
-    ,   SUB_ORIGIN    = nextorigin(ORIGIN)
+    ,   ORIGINS       = setup['origins'] || ['pubsub.pubnub.com']
     ,   CONNECT       = function(){}
     ,   PUB_QUEUE     = []
     ,   TIME_DRIFT    = 0
@@ -222,11 +221,17 @@ function PN_API(setup) {
     ,   TIMETOKEN     = 0
     ,   RESUMED       = false
     ,   CHANNELS      = {}
+    ,   CACHE_BUSTING = false
     ,   STATE         = {}
     ,   PRESENCE_HB_TIMEOUT  = null
     ,   PRESENCE_HB          = validate_presence_heartbeat(setup['heartbeat'] || setup['pnexpires'] || 0, setup['error'])
     ,   PRESENCE_HB_INTERVAL = setup['heartbeat_interval'] || PRESENCE_HB - 3
     ,   PRESENCE_HB_RUNNING  = false
+    ,   ORIGIN_HB_TIMEOUT     = null
+    ,   ORIGIN_HB_INTERVAL    = setup['origin_heartbeat_interval'] || 60
+    ,   ORIGIN_HB_MAX_RETRIES = setup['origin_heartbeat_max_retries'] || 2
+    ,   ORIGIN_HB_INTERVAL_AFTER_FAILURE = setup['origin_heartbeat_interval_after_failure'] || 10
+    ,   ORIGIN_HB_RUNNING     = false
     ,   NO_WAIT_FOR_PENDING  = setup['no_wait_for_pending']
     ,   COMPATIBLE_35 = setup['compatible_3.5']  || false
     ,   xdr           = setup['xdr']
@@ -235,13 +240,55 @@ function PN_API(setup) {
     ,   jsonp_cb      = setup['jsonp_cb']   || function() { return 0 }
     ,   db            = setup['db']         || {'get': function(){}, 'set': function(){}}
     ,   CIPHER_KEY    = setup['cipher_key']
+    ,   origin_hb_callback       = setup['origin_heartbeat_callback']
+    ,   origin_hb_error_callback = setup['origin_heartbeat_error_callback']    
     ,   UUID          = setup['uuid'] || ( db && db['get'](SUBSCRIBE_KEY+'uuid') || '');
+
+    var nextorigin_ha = (function() {
+        var cur = 0;
+        return function(origins) {
+            if (!origins || !origins[0]) return nextorigin_cache_busting(origins);
+            var len = origins.length;
+            return 'http'+SSL+'://' + ( origins[++cur % origins.length]  || origins[0] || 'pubsub.pubnub.com');
+        }
+    })();
+
+    var nextorigin = function(domain,failover) {
+        if (CACHE_BUSTING)
+            return nextorigin_cache_busting(domain, failover);
+        else
+            return nextorigin_ha(ORIGINS);
+    };
+
+    var STD_ORIGIN    = nextorigin(ORIGINS || ORIGIN)
+    ,   SUB_ORIGIN    = nextorigin(ORIGINS || ORIGIN);
 
     var crypto_obj    = setup['crypto_obj'] ||
         {
             'encrypt' : function(a,key){ return a},
             'decrypt' : function(b,key){return b}
         };
+
+    var cur = -1;
+    var retry_no = 1;
+
+    var nextorigin_ha = (function() {
+        return function(origins , current) {
+            if (!origins || !origins[0]) return nextorigin_cache_busting(origins);
+            var len = origins.length;
+            return 'http'+SSL+'://' + ( origins[current % origins.length]  || origins[0] || 'pubsub.pubnub.com');
+        }
+    })();
+
+    var nextorigin = function(domain,failover) {
+        if (CACHE_BUSTING)
+            return nextorigin_cache_busting(domain, failover);
+        else
+            return nextorigin_ha(ORIGINS, failover);
+    };
+
+    var STD_ORIGIN    = nextorigin(ORIGINS || ORIGIN, ++cur)
+    ,   SUB_ORIGIN    = nextorigin(ORIGINS || ORIGIN, cur);
 
     function validate_presence_heartbeat(heartbeat, cur_heartbeat, error) {
         var err = false;
@@ -305,6 +352,68 @@ function PN_API(setup) {
         !PRESENCE_HB_RUNNING && _presence_heartbeat();
     }
 
+    function _reset() {
+        var old_origin = SUB_ORIGIN;
+        STD_ORIGIN = nextorigin(ORIGINS || ORIGIN, ++cur);
+        SUB_ORIGIN = nextorigin(ORIGINS || ORIGIN, cur);
+        origin_hb_error_callback && origin_hb_error_callback({ 'error' : 'switching origin', "old_origin" : old_origin, "new_origin" : SUB_ORIGIN});
+        _reset_offline( 1, { "error" : {message : "Heartbeat Failed. Changing Origin", old_origin : old_origin,  new_origin : SUB_ORIGIN}});
+
+        each_channel(function(channel){
+            // Disconnect
+            if (channel.connected && !channel.disconnected) {
+                channel.disconnected = 1;
+                channel.disconnect(channel.name);
+            }
+        });
+        retry_no = 1;
+        CONNECT();
+    }
+
+    function _origin_heartbeat(reset) {
+
+        clearTimeout(ORIGIN_HB_TIMEOUT);
+
+        if (!ORIGIN_HB_INTERVAL || !generate_channel_list(CHANNELS).length){
+            ORIGIN_HB_RUNNING = false;
+            return;
+        }
+
+        ORIGIN_HB_RUNNING = true;
+        SELF['origin_heartbeat']({
+            'callback' : function(r) {
+                origin_hb_callback && origin_hb_callback({'timetoken' : r, 'origin' : SUB_ORIGIN, 'heartbeat_retry_number' : retry_no});
+                retry_no = 1;
+                ORIGIN_HB_TIMEOUT = timeout( _origin_heartbeat, (ORIGIN_HB_INTERVAL) * SECOND );
+            },
+            'error' : function(e) {
+                origin_hb_error_callback && 
+                origin_hb_error_callback({"origin" : SUB_ORIGIN, 'heartbeat_retry_number' : retry_no});
+
+                !origin_hb_error_callback && 
+                error && 
+                error({"origin" : SUB_ORIGIN, 'heartbeat_retry_number' : retry_no});
+
+                if (reset || ORIGIN_HB_MAX_RETRIES === 1) {
+                    _reset();
+                    retry_no = 1;
+                    ORIGIN_HB_TIMEOUT = timeout( _origin_heartbeat, ORIGIN_HB_INTERVAL * SECOND );
+                } else {
+                    retry_no++;
+                    if (retry_no < ORIGIN_HB_MAX_RETRIES) {
+                        ORIGIN_HB_TIMEOUT = timeout( _origin_heartbeat, ORIGIN_HB_INTERVAL_AFTER_FAILURE * SECOND );
+                    } else {
+                        ORIGIN_HB_TIMEOUT = timeout(function() { _origin_heartbeat(1) },ORIGIN_HB_INTERVAL_AFTER_FAILURE * SECOND );
+                    }
+                }
+            }
+        });
+    }
+
+    function start_origin_heartbeat() {
+        !ORIGIN_HB_RUNNING && _origin_heartbeat();
+    }
+
     function publish(next) {
 
         if (NO_WAIT_FOR_PENDING) {
@@ -354,10 +463,20 @@ function PN_API(setup) {
 
     // Announce Leave Event
     var SELF = {
+        'add_origin' : function(origin) {
+            ORIGINS.push(origin);
+        },
+        'remove_origin' : function(origin) {
+            for (var a in ORIGINS) {
+                if (ORIGINS[a] === origin) {
+                    ORIGINS[a] = false;
+                }
+            }
+        },
         'LEAVE' : function( channel, blocking, callback, error ) {
 
             var data   = { 'uuid' : UUID, 'auth' : AUTH_KEY }
-            ,   origin = nextorigin(ORIGIN)
+            ,   origin = nextorigin(ORIGINS || ORIGIN)
             ,   callback = callback || function(){}
             ,   err      = error    || function(){}
             ,   jsonp  = jsonp_cb();
@@ -425,6 +544,13 @@ function PN_API(setup) {
         },
         'get_version' : function() {
             return SDK_VER;
+        },
+        'get_origin_heartbeat_interval' : function() {
+            return PRESENCE_HB_INTERVAL;
+        },
+        'set_origin_heartbeat_interval' : function(origin_heartbeat_interval) {
+            ORIGIN_HB_INTERVAL = origin_heartbeat_interval;
+            _origin_heartbeat();
         },
 
         /*
@@ -755,7 +881,7 @@ function PN_API(setup) {
                     }
                 });
             } );
-
+            /*
             // Test Network Connection
             function _test_connection(success) {
                 if (success) {
@@ -764,8 +890,8 @@ function PN_API(setup) {
                 }
                 else {
                     // New Origin on Failed Connection
-                    STD_ORIGIN = nextorigin( ORIGIN, 1 );
-                    SUB_ORIGIN = nextorigin( ORIGIN, 1 );
+                    STD_ORIGIN = nextorigin( ORIGINS || ORIGIN, 1 );
+                    SUB_ORIGIN = nextorigin( ORIGINS || ORIGIN, 1 );
 
                     // Re-test Connection
                     timeout( function() {
@@ -789,6 +915,8 @@ function PN_API(setup) {
                 });
             }
 
+            */
+
             // Evented Subscribe
             function _connect() {
                 var jsonp    = jsonp_cb()
@@ -808,13 +936,15 @@ function PN_API(setup) {
                 if (PRESENCE_HB) data['heartbeat'] = PRESENCE_HB;
 
                 start_presence_heartbeat();
+                start_origin_heartbeat();
                 SUB_RECEIVER = xdr({
                     timeout  : sub_timeout,
                     callback : jsonp,
                     fail     : function(response) {
                         _invoke_error(response, errcb);
+                        //_origin_heartbeat();
                         //SUB_RECEIVER = null;
-                        SELF['time'](_test_connection);
+                        //SELF['time'](_test_connection);
                     },
                     data     : data,
                     url      : [
@@ -845,9 +975,15 @@ function PN_API(setup) {
 
                         // Connect
                         each_channel(function(channel){
-                            if (channel.connected) return;
-                            channel.connected = 1;
-                            channel.connect(channel.name);
+                            if (channel.connected && channel.disconnected) {
+                                channel.disconnected = 0;
+                                return channel.reconnect(channel.name);
+                            } 
+                            if (!channel.connected) {
+                                channel.connected = 1;
+                                channel.disconnected = 0;
+                                return channel.connect(channel.name);
+                            }
                         });
 
                         if (RESUMED && !SUB_RESTORE) {
@@ -906,6 +1042,7 @@ function PN_API(setup) {
             }
 
             CONNECT = function() {
+                if (!SUB_RESTORE) TIMETOKEN = 0;
                 _reset_offline();
                 timeout( _connect, windowing );
             };
@@ -1231,6 +1368,25 @@ function PN_API(setup) {
                 fail     : function(response) { _invoke_error(response, err); }
             });
         },
+        'origin_heartbeat' : function(args) {
+            var callback = args['callback'] || function() {}
+            var err      = args['error']    || function() {}
+            var jsonp    = jsonp_cb();
+            var data     = { 'uuid' : UUID, 'auth' : AUTH_KEY };
+
+            xdr({
+                callback : jsonp,
+                data     : data,
+                timeout  : SECOND * 5,
+                url      : [
+                    SUB_ORIGIN, 'time', '0'
+                ],
+                success  : function(response) {
+                    _invoke_callback(response, callback, err);
+                },
+                fail     : function(response) { _invoke_error(response, err); }
+            });
+        },
 
         // Expose PUBNUB Functions
         'xdr'           : xdr,
@@ -1254,7 +1410,7 @@ function PN_API(setup) {
         });
         timeout( _poll_online, SECOND );
     }
-
+    /*
     function _poll_online2() {
         SELF['time'](function(success){
             detect_time_detla( function(){}, success );
@@ -1265,6 +1421,7 @@ function PN_API(setup) {
             timeout( _poll_online2, KEEPALIVE );
         });
     }
+    */
 
     function _reset_offline(err, msg) {
         SUB_RECEIVER && SUB_RECEIVER(err, msg);
@@ -1275,7 +1432,7 @@ function PN_API(setup) {
     db['set']( SUBSCRIBE_KEY + 'uuid', UUID );
 
     timeout( _poll_online,  SECOND    );
-    timeout( _poll_online2, KEEPALIVE );
+    //timeout( _poll_online2, KEEPALIVE );
     PRESENCE_HB_TIMEOUT = timeout( start_presence_heartbeat, ( PRESENCE_HB_INTERVAL - 3 ) * SECOND ) ;
 
     // Detect Age of Message
