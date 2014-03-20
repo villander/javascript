@@ -58,6 +58,7 @@ function build_url( url_components, url_params ) {
     } );
 
     url += "?" + params.join(PARAMSBIT);
+    console.log(url);
     return url;
 }
 
@@ -232,6 +233,9 @@ function PN_API(setup) {
     ,   ORIGIN_HB_MAX_RETRIES = setup['origin_heartbeat_max_retries'] || 2
     ,   ORIGIN_HB_INTERVAL_AFTER_FAILURE = setup['origin_heartbeat_interval_after_failure'] || 10
     ,   ORIGIN_HB_RUNNING     = false
+    ,   OPTIMAL_ORIGIN_CHECK_HB_RUNNING = false
+    ,   OPTIMAL_ORIGIN_CHECK_HB_TIMEOUT = null
+    ,   OPTIMAL_ORIGIN_CHECK_HB_INTERVAL = setup['optimal_origin_check_heartbeat_interval'] || 15
     ,   NO_WAIT_FOR_PENDING  = setup['no_wait_for_pending']
     ,   COMPATIBLE_35 = setup['compatible_3.5']  || false
     ,   xdr           = setup['xdr']
@@ -352,10 +356,10 @@ function PN_API(setup) {
         !PRESENCE_HB_RUNNING && _presence_heartbeat();
     }
 
-    function _reset() {
+    function _reset(i) {
         var old_origin = SUB_ORIGIN;
-        STD_ORIGIN = nextorigin(ORIGINS || ORIGIN, ++cur);
-        SUB_ORIGIN = nextorigin(ORIGINS || ORIGIN, cur);
+        STD_ORIGIN = nextorigin(ORIGINS || ORIGIN, i || ++cur);
+        SUB_ORIGIN = nextorigin(ORIGINS || ORIGIN, i || cur);
         origin_hb_error_callback && origin_hb_error_callback({ 'error' : 'switching origin', "old_origin" : old_origin, "new_origin" : SUB_ORIGIN});
         _reset_offline( 1, { "error" : {message : "Heartbeat Failed. Changing Origin", old_origin : old_origin,  new_origin : SUB_ORIGIN}});
 
@@ -368,6 +372,34 @@ function PN_API(setup) {
         });
         retry_no = 1;
         CONNECT();
+    }
+
+    function _send_optimal_check_heartbeat(i) {
+        SELF['origin_heartbeat']({
+            'origin'   : ORIGINS[i],
+            'callback' : function(r) {
+                console.log('OPTIMAL CHECK SUCCESS ' + i);
+                console.log('CUR ' + cur % ORIGINS.length);
+                if (i < cur % ORIGINS.length) _reset(i);
+            }
+        });
+    }
+
+    function _optimal_origin_check_heartbeat(reset) {
+        console.log('OPTIMAL ORIGIN CHECK HEARTBEAT');
+        clearTimeout(OPTIMAL_ORIGIN_CHECK_HB_TIMEOUT);
+
+        if (!OPTIMAL_ORIGIN_CHECK_HB_INTERVAL || !generate_channel_list(CHANNELS).length){
+            ORIGIN_HB_RUNNING = false;
+            return;
+        }
+
+        OPTIMAL_ORIGIN_CHECK_HB_RUNNING = true;
+
+        for (var i = 0 ; i < ( cur % ORIGINS.length ) ; i++) {
+            _send_optimal_check_heartbeat(i);
+        }
+        OPTIMAL_ORIGIN_CHECK_HB_TIMEOUT = timeout( _optimal_origin_check_heartbeat, (OPTIMAL_ORIGIN_CHECK_HB_INTERVAL) * SECOND );
     }
 
     function _origin_heartbeat(reset) {
@@ -412,6 +444,10 @@ function PN_API(setup) {
 
     function start_origin_heartbeat() {
         !ORIGIN_HB_RUNNING && _origin_heartbeat();
+    }
+
+    function start_optimal_origin_check_heartbeat() {
+        !OPTIMAL_ORIGIN_CHECK_HB_RUNNING && _optimal_origin_check_heartbeat();
     }
 
     function publish(next) {
@@ -937,6 +973,7 @@ function PN_API(setup) {
 
                 start_presence_heartbeat();
                 start_origin_heartbeat();
+                start_optimal_origin_check_heartbeat();
                 SUB_RECEIVER = xdr({
                     timeout  : sub_timeout,
                     callback : jsonp,
@@ -1372,6 +1409,7 @@ function PN_API(setup) {
             var callback = args['callback'] || function() {}
             var err      = args['error']    || function() {}
             var jsonp    = jsonp_cb();
+            var origin   = 'http'+SSL+'://' + args['origin']   || SUB_ORIGIN;
             var data     = { 'uuid' : UUID, 'auth' : AUTH_KEY };
 
             xdr({
@@ -1379,7 +1417,7 @@ function PN_API(setup) {
                 data     : data,
                 timeout  : SECOND * 5,
                 url      : [
-                    SUB_ORIGIN, 'time', '0'
+                    origin, 'time', '0'
                 ],
                 success  : function(response) {
                     _invoke_callback(response, callback, err);
