@@ -492,7 +492,7 @@ function PN_API(setup) {
         STD_ORIGIN = nextorigin(ORIGINS || ORIGIN, counter);
         SUB_ORIGIN = nextorigin(ORIGINS || ORIGIN, counter);
         origin_hb_error_callback && origin_hb_error_callback({ 'message' : 'switching origin', "old_origin" : old_origin, "new_origin" : SUB_ORIGIN});
-        _reset_offline( 1, { message : message || "Heartbeat Failed. Changing Origin", old_origin : old_origin,  new_origin : SUB_ORIGIN});
+        _reset_offline( 1, { "message" : message || "Heartbeat Failed. Changing Origin", "old_origin" : old_origin,  "new_origin" : SUB_ORIGIN});
 
         each_channel(function(channel){
             // Disconnect
