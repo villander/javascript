@@ -158,7 +158,7 @@ pubnub_dev_console = function(){
             switch(input) {
 
                 case SUBSCRIBE:
-                    var channel = get_input("Enter channel", "string", "mychannel");
+                    var channel = get_input("Enter channel", "string", "a");
                     var add_state = get_input("Add State ? ", "boolean", false);
                     var state;
                     if (add_state) {
