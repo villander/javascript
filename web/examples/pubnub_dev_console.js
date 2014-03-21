@@ -72,13 +72,12 @@ pubnub_dev_console = function(){
 
     SELF = {
 
-        'init'  : function(origin, pub_key, sub_key, sec_key, auth_key, ssl, heartbeat_enabled) {
-            origin      = origin   || get_input("Enter origin", "string", "pubsub.pubnub.com");
+        'init'  : function(origin, pub_key, sub_key, sec_key, auth_key, ssl, heartbeat_enabled, origin_heartbeat_enabled) {
             pub_key     = pub_key  || get_input("Enter publish key", "string", "demo");
             sub_key     = sub_key  || get_input("Enter subscribe key", "string", "demo" );
             sec_key     = sec_key  || get_input("Enter secret key", "string", "demo");
             auth_key    = auth_key || getAuthKey("myAuthKey");
-            ssl         = ssl      || get_input("SSL ?", "boolean", false);
+            ssl         = (typeof ssl !== 'undefined')?ssl:get_input("SSL ?", "boolean", false);
             uuid        = "console-" + Math.random();
 
             var heartbeat, heartbeatInterval;
@@ -87,9 +86,32 @@ pubnub_dev_console = function(){
                 heartbeat           = get_input("Presence Heartbeat Timeout (seconds)?", "number", 30);
                 heartbeatInterval   = get_input("Presence Heartbeat Interval (seconds)?", "number", 5);
             }
-
             var d = {};
-            d['origin'] = origin;
+            if (origin_heartbeat_enabled) {
+                origin_heartbeat = get_input("Origin Heartbeat Interval (seconds)?", "number", 30);
+                max_retries = get_input("Origin Heartbeat Max Retries ?", "number", 2);
+                origin_heartbeat_retry = get_input("Origin Heartbeat Retry Interval (seconds)?", "number", 10);
+                optimal_check = get_input("Optimal origin check Interval (seconds)?", "number", 60);
+
+
+                d['origin_heartbeat_interval'] = origin_heartbeat;
+                d['optimal_origin_check_heartbeat_interval'] = optimal_check;
+                d['origin_heartbeat_interval_after_failure'] = origin_heartbeat_retry;
+                d['origin_heartbeat_error_callback'] = error ;
+                d['origin_heartbeat_max_retries'] = max_retries;
+            }
+
+
+            if (origin) {
+                if (typeof origin === 'string') {
+                    d['origin'] = origin;
+                } else {
+                    d['origins'] = origin;
+                }
+            } else {
+                d['origin'] = get_input("Enter origin", "string", "pubsub.pubnub.com");
+            }
+            
             d['publish_key'] = pub_key;
             d['subscribe_key'] = sub_key;
             if (sec_key) d['secret_key'] = sec_key;
@@ -263,3 +285,9 @@ pubnub_dev_console = function(){
     return SELF;
 }
 dev_console = pubnub_dev_console();
+
+function init_ha(){
+    dev_console.init(
+['geo1.devbuild.pubnub.com', 'geo2.devbuild.pubnub.com', 'geo3.devbuild.pubnub.com', 'geo4.devbuild.pubnub.com'],
+"demo","demo","demo","demo", false, false, true)
+}

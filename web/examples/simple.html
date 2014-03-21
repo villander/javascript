@@ -1,5 +1,9 @@
 <div id=pubnub></div>
-<script src="../pubnub.js"></script>
+<div class="dev-console-message-output">
+
+                            <div id="dev-console-message-output"></div>
+                        </div>
+<script src="../pubnub.min.js"></script>
 <script>(function(){
     // INIT PubNub
     console.log(PUBNUB);
@@ -9,21 +13,41 @@
         ssl : true,
         jsonp : false
     });
+
+function log( where, what, color, channel_name ) {
+    where.innerHTML = (p.supplant(
+        '<div class="message"><div class="message_ts">{time} : </div><div class="packet" style=color:{color}>{channel}{message}</div></div>', {
+            time : (new Date()).toISOString(),
+            color   : color,
+            message : (((typeof what === 'string') ? what : JSON.stringify(what)) || "")
+                .replace( /\&/g, "&amp;" )
+                .replace( /</g,  "&lt;"  )
+                .replace( />/g,  "&gt;"  ),
+            channel : channel_name ?
+                ('<' + channel_name + '>' + ' ')
+                    .replace( /\&/g, "&amp;" )
+                    .replace( /</g,  "&lt;"  )
+                    .replace( />/g,  "&gt;"  )
+                : ' '
+        }
+    ) + where.innerHTML).slice( 0, 10000 );
+}
+var p               = PUBNUB;
+var message_out     = p.$('dev-console-message-output');
+
     pubnub.subscribe({
-        callback : console.log,
-        error : console.log,
-        channel : "abcd,xyz",
-        metadata : { "abcd" : {"age" : 30}, "xyz" : { "age" : 50 } },
-        heartbeat : 15
-    })
-
-    setTimeout(function(){
-        pubnub.state({
-            callback : console.log,
-            channel  : "xyz",
-            metadata : { "age" : 100}
-        });
-    }, 30000);
-
-
+        backfill   : false,
+        noheresync : true,
+        channel    : "abcd",
+        callback   : function(msg, envelope, channel_name) { log( message_out, msg, '#fa0', channel_name ) },
+        error : function(e) {
+            log( message_out, [ 'SUBSCRIBE ERROR', e ], '#FF2262' );
+        },
+        disconnect : function(channel) {
+            log( message_out, [ 'DISCONNECTED FROM', channel ], '#EF2929' );
+        },
+        reconnect : function(channel) {
+            log( message_out, [ 'RECONECTED TO', channel ] , '#62C2CC' );
+        }
+    });
 })();</script>
