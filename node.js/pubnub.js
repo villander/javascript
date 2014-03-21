@@ -59,7 +59,6 @@ function build_url( url_components, url_params ) {
     } );
 
     url += "?" + params.join(PARAMSBIT);
-    console.log(url);
     return url;
 }
 
@@ -249,25 +248,6 @@ function PN_API(setup) {
     ,   origin_hb_error_callback = setup['origin_heartbeat_error_callback']    
     ,   UUID          = setup['uuid'] || ( db && db['get'](SUBSCRIBE_KEY+'uuid') || '');
 
-    var nextorigin_ha = (function() {
-        var cur = 0;
-        return function(origins) {
-            if (!origins || !origins[0]) return nextorigin_cache_busting(origins);
-            var len = origins.length;
-            return 'http'+SSL+'://' + ( origins[++cur % origins.length]  || origins[0] || 'pubsub.pubnub.com');
-        }
-    })();
-
-    var nextorigin = function(domain,failover) {
-        if (CACHE_BUSTING)
-            return nextorigin_cache_busting(domain, failover);
-        else
-            return nextorigin_ha(ORIGINS);
-    };
-
-    var STD_ORIGIN    = nextorigin(ORIGINS || ORIGIN)
-    ,   SUB_ORIGIN    = nextorigin(ORIGINS || ORIGIN);
-
     var crypto_obj    = setup['crypto_obj'] ||
         {
             'encrypt' : function(a,key){ return a},
@@ -277,13 +257,11 @@ function PN_API(setup) {
     var cur = -1;
     var retry_no = 1;
 
-    var nextorigin_ha = (function() {
-        return function(origins , current) {
+    var nextorigin_ha = function(origins , current) {
             if (!origins || !origins[0]) return nextorigin_cache_busting(origins);
             var len = origins.length;
             return 'http'+SSL+'://' + ( origins[current % origins.length]  || origins[0] || 'pubsub.pubnub.com');
-        }
-    })();
+        };
 
     var nextorigin = function(domain,failover) {
         if (CACHE_BUSTING)
@@ -357,12 +335,14 @@ function PN_API(setup) {
         !PRESENCE_HB_RUNNING && _presence_heartbeat();
     }
 
-    function _reset(i) {
+    function _reset(i,message) {
         var old_origin = SUB_ORIGIN;
-        STD_ORIGIN = nextorigin(ORIGINS || ORIGIN, i || ++cur);
-        SUB_ORIGIN = nextorigin(ORIGINS || ORIGIN, i || cur);
+        var counter = (typeof i !== 'undefined')?i:++cur;
+        cur = counter;
+        STD_ORIGIN = nextorigin(ORIGINS || ORIGIN, counter);
+        SUB_ORIGIN = nextorigin(ORIGINS || ORIGIN, counter);
         origin_hb_error_callback && origin_hb_error_callback({ 'error' : 'switching origin', "old_origin" : old_origin, "new_origin" : SUB_ORIGIN});
-        _reset_offline( 1, { "error" : {message : "Heartbeat Failed. Changing Origin", old_origin : old_origin,  new_origin : SUB_ORIGIN}});
+        _reset_offline( 1, { "error" : {message : message || "Heartbeat Failed. Changing Origin", old_origin : old_origin,  new_origin : SUB_ORIGIN}});
 
         each_channel(function(channel){
             // Disconnect
@@ -379,15 +359,12 @@ function PN_API(setup) {
         SELF['origin_heartbeat']({
             'origin'   : ORIGINS[i],
             'callback' : function(r) {
-                console.log('OPTIMAL CHECK SUCCESS ' + i);
-                console.log('CUR ' + cur % ORIGINS.length);
-                if (i < cur % ORIGINS.length) _reset(i);
+                if (i < cur % ORIGINS.length) _reset(i, "Optimal Check success for " + ORIGINS[i]);
             }
         });
     }
 
     function _optimal_origin_check_heartbeat(reset) {
-        console.log('OPTIMAL ORIGIN CHECK HEARTBEAT');
         clearTimeout(OPTIMAL_ORIGIN_CHECK_HB_TIMEOUT);
 
         if (!OPTIMAL_ORIGIN_CHECK_HB_INTERVAL || !generate_channel_list(CHANNELS).length){
@@ -493,7 +470,7 @@ function PN_API(setup) {
     }
 
     function _invoke_error(response,err) {
-        if (typeof response == 'object' && response['error']) {
+        if (typeof response == 'object' && response['error'] && response['message'] && response['payload']) {
             err({'message' : response['message'], 'payload' : response['payload']});
         } else err(response);
     }
@@ -897,7 +874,8 @@ function PN_API(setup) {
                 // Subscribe Presence Channel
                 SELF['subscribe']({
                     'channel'  : channel + PRESENCE_SUFFIX,
-                    'callback' : presence
+                    'callback' : presence,
+                    'restore'  : restore
                 });
 
                 // Presence Subscribed?
@@ -1410,7 +1388,7 @@ function PN_API(setup) {
             var callback = args['callback'] || function() {}
             var err      = args['error']    || function() {}
             var jsonp    = jsonp_cb();
-            var origin   = 'http'+SSL+'://' + args['origin']   || SUB_ORIGIN;
+            var origin   = (args['origin'])? 'http'+SSL+'://' + args['origin']:SUB_ORIGIN;
             var data     = { 'uuid' : UUID, 'auth' : AUTH_KEY };
 
             xdr({
