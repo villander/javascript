@@ -87,7 +87,23 @@ var tests = [
         "checks"  : [   
                         { origin : "geo1", interval : 480}
                     ]
+    },
+    {
+        "name"    : "ha test 5",
+        "channel" : "ab",
+        "origins" : ["geo1", "geo2", "geo3", "geo4"],
+        "down"    : [
+                        { origin : "geo1", duration : 600},
+                        { origin : "geo2", duration : 600},
+                        { origin : "geo3", duration : 600},
+                        { origin : "geo4", duration : 400}
+                    ],
+        "checks"  : [ 
+                        { origin : "geo4", interval : 540},  
+                        { origin : "geo1", interval : 720}
+                    ]
     }
+
 
 
 ]
