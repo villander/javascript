@@ -1,0 +1,87 @@
+
+
+High Availability Test Plan
+
+step init(origins) {
+	
+	/*
+		initializes pubnub object with a list of origins
+		for ex. ['geo1.devbuild.pubnub.com', 'geo2.devbuild.pubnub.com']
+	*/
+
+}
+
+step subscribe(channel) {
+	
+	/*
+		subscribe to channel
+	*/
+}
+
+step down(origin, duration) {
+	
+	/*
+		bring down origin for duration ( in seconds )
+	*/
+}
+
+check origin_in_use(origin, after_time) {
+	
+	/*
+		check if origin is in use after after_time s
+	*/
+
+}
+
+
+test 1 {
+	
+	init(['geo1.devbuild.pubnub.com', 'geo2.devbuild.pubnub.com', 
+	'geo3.devbuild.pubnub.com', 'geo4.debuild.pubnub.com'])
+
+	subscribe('a')
+
+	down('geo1.devbuild.pubnub.com', 600)
+	down('geo2.devbuild.pubnub.com', 480)
+	down('geo3.devbuild.pubnub.com', 360)
+
+	origin_in_use('geo4.devbuild.pubnub.com', 120)
+	origin_in_use('geo3.devbuild.pubnub.com', 420)
+	origin_in_use('geo2.devbuild.pubnub.com', 540)
+	origin_in_use('geo1.devbuild.pubnub.com', 660)
+}
+
+
+test 2 {
+
+	init(['geo1.devbuild.pubnub.com', 'geo2.devbuild.pubnub.com', 
+	'geo3.devbuild.pubnub.com', 'geo4.debuild.pubnub.com'])
+
+	subscribe('a')
+
+	down('geo1.devbuild.pubnub.com', 120)
+
+	origin_in_use('geo2.devbuild.pubnub.com', 90)
+	origin_in_use('geo1.devbuild.pubnub.com', 180)
+	
+}
+
+test 3 {
+
+	init(['geo1.devbuild.pubnub.com', 'geo2.devbuild.pubnub.com', 
+	'geo3.devbuild.pubnub.com', 'geo4.debuild.pubnub.com'])
+
+	subscribe('a')
+
+	down('geo1.devbuild.pubnub.com', 600)
+	down('geo2.devbuild.pubnub.com', 540)
+	down('geo3.devbuild.pubnub.com', 540)
+	down('geo3.devbuild.pubnub.com', 540)
+
+	origin_in_use('geo1.devbuild.pubnub.com', 720)
+	
+}
+	
+
+
+
