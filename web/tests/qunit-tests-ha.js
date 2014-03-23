@@ -33,7 +33,7 @@ function down(origin, time) {
 } 
 
 var tests = [
-
+    
     {
         "name"    : "ha test 1",
         "channel" : "ab",
@@ -72,6 +72,20 @@ var tests = [
                         { origin : "geo3", interval : 420},
                         { origin : "geo2", interval : 540},
                         { origin : "geo1", interval : 660}
+                    ]
+    },
+    {
+        "name"    : "ha test 4",
+        "channel" : "ab",
+        "origins" : ["geo1", "geo2", "geo3", "geo4"],
+        "down"    : [
+                        { origin : "geo1", duration : 360},
+                        { origin : "geo2", duration : 360},
+                        { origin : "geo3", duration : 360},
+                        { origin : "geo4", duration : 360}
+                    ],
+        "checks"  : [   
+                        { origin : "geo1", interval : 480}
                     ]
     }
 
