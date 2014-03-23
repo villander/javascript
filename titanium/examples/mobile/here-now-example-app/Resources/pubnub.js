@@ -211,7 +211,7 @@ function PN_API(setup) {
     ,   hmac_SHA256   = setup['hmac_SHA256']
     ,   SSL           = setup['ssl']            ? 's' : ''
     ,   ORIGIN        = 'http'+SSL+'://'+(setup['origin']||'pubsub.pubnub.com')
-    ,   ORIGINS       = setup['origins'] || ['pubsub.pubnub.com']
+    ,   ORIGINS       = setup['origins']
     ,   CONNECT       = function(){}
     ,   PUB_QUEUE     = []
     ,   TIME_DRIFT    = 0
@@ -265,10 +265,13 @@ function PN_API(setup) {
         };
 
     var nextorigin = function(domain,failover) {
+        
+        if (!ORIGINS) return ORIGIN;
+
         if (CACHE_BUSTING)
             return nextorigin_cache_busting(domain, failover);
         else
-            return nextorigin_ha(ORIGINS, failover);
+            return nextorigin_ha(ORIGINS , failover);
     };
 
     var STD_ORIGIN    = nextorigin(ORIGINS || ORIGIN, ++cur)
@@ -566,6 +569,9 @@ function PN_API(setup) {
         'set_origin_heartbeat_interval' : function(origin_heartbeat_interval) {
             ORIGIN_HB_INTERVAL = origin_heartbeat_interval;
             _origin_heartbeat();
+        },
+        'get_sub_origin' : function() {
+            return SUB_ORIGIN;
         },
 
         /*
