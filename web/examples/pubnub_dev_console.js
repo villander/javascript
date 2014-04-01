@@ -91,7 +91,7 @@ pubnub_dev_console = function(){
                 origin_heartbeat = get_input("Origin Heartbeat Interval (seconds)?", "number", 5);
                 max_retries = get_input("Origin Heartbeat Max Retries ?", "number", 2);
                 origin_heartbeat_retry = get_input("Origin Heartbeat Retry Interval (seconds)?", "number", 2);
-                optimal_check = get_input("Optimal origin check Interval (seconds)?", "number", 10);
+                optimal_check = get_input("Optimal origin check Interval (seconds)?", "number", 5);
 
 
                 d['origin_heartbeat_interval'] = origin_heartbeat;
