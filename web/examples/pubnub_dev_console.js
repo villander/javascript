@@ -167,7 +167,8 @@ pubnub_dev_console = function(){
                     var d = {
                         'channel'     : channel,
                         'callback'    : print,
-                        'error'       : error
+                        'error'       : error,
+                        'restore'     : true
                     };
                     if (state) d['state'] = state;
                     pubnub.subscribe(d);
