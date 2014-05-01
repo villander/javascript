@@ -9,8 +9,8 @@ var PUBNUB = require("../pubnub.js")
 
 var pubnub = PUBNUB({
     publish_key   : "demo",
-    subscribe_key : "demo"
-    //cipher_key : "demo"
+    subscribe_key : "demo",
+    auth_key : "abcd1234"
 });
 
 pubnub.publish({
@@ -25,3 +25,9 @@ if (success) console.log( "Success!", response );
 if (!success) console.log( "Fail!", response );
 }
 });
+
+pubnub.subscribe({
+	'channel' : 'xyz',
+    'callback' : function(r){console.log(JSON.stringify(r));},
+    'error' : function(r){console.log(JSON.stringify(r));},
+})

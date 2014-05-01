@@ -4,7 +4,7 @@ var NOW             = 1
 ,   PRESENCE_SUFFIX = '-pnpres'
 ,   DEF_WINDOWING   = 10     // MILLISECONDS.
 ,   DEF_TIMEOUT     = 10000  // MILLISECONDS.
-,   DEF_SUB_TIMEOUT = 310    // SECONDS.
+,   DEF_SUB_TIMEOUT = 350    // SECONDS.
 ,   DEF_KEEPALIVE   = 60     // SECONDS (FOR TIMESYNC).
 ,   SECOND          = 1000   // A THOUSAND MILLISECONDS.
 ,   URLBIT          = '/'
@@ -1299,8 +1299,8 @@ function PN_API(setup) {
     if (!UUID) UUID = SELF['uuid']();
     db['set']( SUBSCRIBE_KEY + 'uuid', UUID );
 
-    timeout( _poll_online,  SECOND    );
-    timeout( _poll_online2, KEEPALIVE );
+    //timeout( _poll_online,  SECOND    );
+    //timeout( _poll_online2, KEEPALIVE );
     PRESENCE_HB_TIMEOUT = timeout( start_presence_heartbeat, ( PRESENCE_HB_INTERVAL - 3 ) * SECOND ) ;
 
     // Detect Age of Message

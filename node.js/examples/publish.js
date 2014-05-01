@@ -27,6 +27,6 @@ function log(e) { console.log(e) }
 function retry() { console.log('retry?') }
 
 
-for (var i = 0; i < 1000; i++) {
+for (var i = 0; i < 1; i++) {
 	publish('dsm-test',i);
 }

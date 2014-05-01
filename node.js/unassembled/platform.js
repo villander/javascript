@@ -32,21 +32,111 @@ THE SOFTWARE.
 /**
  * UTIL LOCALS
  */
-var NOW                = 1
-,   http               = require('http')
-,   https              = require('https')
-,   XHRTME             = 310000
-,   DEF_TIMEOUT     = 10000
-,   SECOND          = 1000
-,   PNSDK           = 'PubNub-JS-' + PLATFORM + '/' +  VERSION
-,   crypto           = require('crypto')
-,   XORIGN             = 1;
+var NOW                 = 1
+,   http                = require('http')
+,   https               = require('https')
+,   XHRTME              = 320000
+,   DEF_TIMEOUT         = 10000
+,   SECOND              = 1000
+,   PNSDK               = 'PubNub-JS-' + PLATFORM + '/' +  VERSION
+,   crypto              = require('crypto')
+,   req                 = require('request')
+,   XORIGN              = 1;
 
 
 function get_hmac_SHA256(data, key) {
     return crypto.createHmac('sha256',
                     new Buffer(key, 'utf8')).update(data).digest('base64');
 }
+
+/**
+ * Request
+ * =======
+ *  xdr({
+ *     url     : ['http://www.blah.com/url'],
+ *     success : function(response) {},
+ *     fail    : function() {}
+ *  });
+ */
+function xdr_request( setup ) {
+    var request
+    ,   response
+    ,   success  = setup.success || function(){}
+    ,   fail     = setup.fail    || function(){}
+    ,   origin   = setup.origin || 'pubsub.pubnub.com'
+    ,   ssl      = setup.ssl
+    ,   failed   = 0
+    ,   complete = 0
+    ,   loaded   = 0
+    ,   data     = setup['data'] || {}
+    ,   xhrtme   = setup.timeout || DEF_TIMEOUT
+    ,   body = ''
+    ,   finished = function() {
+            if (loaded) return;
+                loaded = 1;
+
+            clearTimeout(timer);
+            try       { response = JSON['parse'](body); }
+            catch (r) { return done(1); }
+            success(response);
+        }
+    ,   done    = function(failed, response) {
+            if (complete) return;
+                complete = 1;
+
+            clearTimeout(timer);
+
+            if (request) {
+                request.abort && request.abort();
+                request = null;
+            }
+            failed && fail(response);
+        }
+        ,   timer  = timeout( function(){done(1);} , xhrtme );
+
+    data['pnsdk'] = PNSDK;
+
+    var options = {};
+    var headers = {};
+    var payload = '';
+
+    var url = build_url( setup.url, data );
+    console.log(url);
+
+    options['url']          = url;
+    options['timeout']      = xhrtme;
+    console.log(options);
+
+    try {
+        request = req(options, function(error, response, b) {
+                var statusCode = response.statusCode;
+                body = b;
+                switch(statusCode) {
+                    case 401:
+                    case 402:
+                    case 403:
+                        try {
+                            response = JSON['parse'](body);
+                            done(1,response);
+                        }
+                        catch (r) { return done(1, body); }
+                        return;
+                    default:
+                        break;
+                }
+                console.log(body);
+                console.log(error); 
+                finished();
+        });
+
+    } catch(e) {
+        done(0);
+        return xdr(setup);
+    }
+
+    return done;
+}
+
 
 
 /**
@@ -123,11 +213,13 @@ function xdr( setup ) {
     options.method   = mode;
     options.agent    = false;
     options.body     = payload;
+    console.log(options);
 
 
     require('http').globalAgent.maxSockets = Infinity;
     try {
-        request = (ssl ? https : http)['request'](options, function(response) {
+        //request = (ssl ? https : http)['request'](options, function(response) {
+        request = req(options, function(error, response, body) {
             response.setEncoding('utf8');
             response.on( 'error', function(){done(1, body || { "error" : "Network Connection Error"})});
             response.on( 'abort', function(){done(1, body || { "error" : "Network Connection Error"})});
@@ -215,7 +307,7 @@ function crypto_obj() {
 
 
 var CREATE_PUBNUB = function(setup) {
-    setup['xdr'] = xdr;
+    setup['xdr'] = xdr_request;
     setup['db'] = db;
     setup['error'] = setup['error'] || error;
     setup['hmac_SHA256'] = get_hmac_SHA256;
