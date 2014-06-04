@@ -17,6 +17,7 @@ var pubnub = PUBNUB({
 });
 
 var games = {}
+var game_no = '';
 
 function is_uuid_in_lobby(uuid, callback, error) {
     pubnub.where_now({
@@ -60,6 +61,7 @@ function start_handshake_2(uuid, turn) {
         'mtype' : 'handshake',
         'step' : 2,
         'p1_uuid' : uuid,
+        'turn' : turn,
         'p2_uuid' : pubnub.get_uuid(),
         'game_id' : Math.random()
     };
@@ -71,7 +73,7 @@ function start_handshake_2(uuid, turn) {
         'error' : function(r) {console.log(r)}   
     });
 }
-function start_handshake_3(uuid, turn) {
+function start_handshake_3(uuid, turn, game_id) {
     var message = {
         'game' : 'tictactoe',
         'mtype' : 'handshake',
@@ -79,7 +81,7 @@ function start_handshake_3(uuid, turn) {
         'p1_uuid' : pubnub.get_uuid(),
         'p2_uuid' : uuid,
         'turn' : turn,
-        'game_id' : Math.random()
+        'game_id' : game_id
     };
 
     pubnub.publish({
@@ -89,6 +91,29 @@ function start_handshake_3(uuid, turn) {
         'error' : function(r) {console.log(r)}  
     });
 }
+
+function update_turn(uuid) {
+    $("#turn").empty();
+    $("#turn").append('<p>' + uuid + ' turn</p>');
+}
+
+function draw_grid(map) {
+    for (var i in map) {
+        document.getElementById(i).innerHTML = map[i];
+    }
+}
+
+function handle_game_messages(message) {
+    console.log()
+    if (message['mtype'] == 'game') {
+        games[message['game_id']].map = message.map;
+        draw_grid(games[message['game_id']].map);
+        games[game_no]['turn'] = message['turn'];
+        update_turn(games[game_no]['turn']);
+    }
+
+}
+
 
 function enter_lobby() {
     pubnub.subscribe({
@@ -112,23 +137,48 @@ function enter_lobby() {
                                 break;
                             case 2: // some has responded to our play request
                                 if (r['p1_uuid'] == pubnub.get_uuid()) {
-                                    alert(r.p2_uuid + ' accepted your request. GAME STARTED. Game ID : ' + r.game_id);
-                                    games[r['game_id']] = {'map' : ['','','','','','','','',''], 'uuid' : r['p2_uuid']}
+                                    game_no = r.game_id;
+                                    
+                                    games[r['game_id']] = {'map' : ['','','','','','','','',''], 'uuid' : r['p2_uuid'], 'symbol' : 'X', 'turn' : r['turn']}
+
                                     console.log(JSON.stringify(games));
-                                    start_handshake_3(r['p2_uuid'], r['turn']);
+                                    
+                                    pubnub.subscribe({
+                                        'channel' : r.game_id,
+                                        'callback' : function(r1) {
+                                            handle_game_messages(r1);
+                                        },
+                                        'error' : function(r1) {
+
+                                        },
+                                        'connect' : function(r1) {
+                                            alert(r.p2_uuid + ' accepted your request. GAME STARTED. Game ID : ' + r.game_id);
+                                            update_turn(r['turn']);
+                                            start_handshake_3(r['p2_uuid'], r['turn'], r['game_id']);
+                                        }
+                                    });
                                 }
                                 break;
                             case 3: // some one has confirmed the game
                                 if (r['p2_uuid'] == pubnub.get_uuid()) {
-                                    alert('GAME Confirmed with ' + r.p1_uuid + ' . Game ID : ' + r.game_id);
-                                    games[r['game_id']] = {'map' : ['','','','','','','','',''], 'uuid' : r['p1_uuid']}
-                                    console.log(JSON.stringify(games));
+                                    game_no = r.game_id;
+                                    games[r['game_id']] = {'map' : ['','','','','','','','',''], 'uuid' : r['p1_uuid'], 'symbol' : 'O', 'turn' : r.turn}
+                                    pubnub.subscribe({
+                                        'channel' : r.game_id,
+                                        'callback' : function(r1) {
+                                            handle_game_messages(r1);
+                                        },
+                                        'error' : function(r1) {
+
+                                        },
+                                        'connect' : function(r1) {
+                                            alert('GAME Confirmed with ' + r.p1_uuid + ' . Game ID : ' + r.game_id);
+                                            update_turn(r['turn']);
+                                        }
+                                    });
                                 }
                                 break;
                         }
-                    }
-                    if (r['mtype'] == 'game') {
-
                     }
 
             }
@@ -146,12 +196,34 @@ function enter_lobby() {
     });
 }
 
-function game_step(position, game_id) {
-    
+function game_step(position) {
+    console.log(position);
+    if (games[game_no].map[position] == '' && games[game_no]['turn'] == pubnub.get_uuid()) {
+        document.getElementById(position).innerHTML = 'X';
+        var m = [];
+        for ( var i in games[game_no].map) {
+            m[i] = games[game_no].map[i];
+        }
+        m[position] = games[game_no].symbol;
+        var message = {
+            'mtype' : 'game',
+            'game_id' : game_no,
+            'map' : m,
+            'turn' : games[game_no].uuid
+        }
+        pubnub.publish({
+            'channel' : game_no,
+            'message' : message,
+            'callback' : function(r){games[game_no].map[position] = 'X';console.log(JSON.stringify(r))},
+            'error' : function(r){console.log(JSON.stringify(r))}
+        })
+    }
 }
 
 function select_square(n) {
-    document.getElementById(n).innerHTML = 'X';
+    console.log(n);
+
+    game_step(n);
 }
 
 function populate_lobby() {
@@ -200,22 +272,23 @@ function start() {
     <td>
     <table align=center class=grid cellspacing=2>
     <tr>
+     <td class=square id=0 onclick="select_square(this.id);"></td>
      <td class=square id=1 onclick="select_square(this.id);"></td>
      <td class=square id=2 onclick="select_square(this.id);"></td>
-     <td class=square id=3 onclick="select_square(this.id);"></td>
     </tr><tr>
+     <td class=square id=3 onclick="select_square(this.id);"></td>
      <td class=square id=4 onclick="select_square(this.id);"></td>
      <td class=square id=5 onclick="select_square(this.id);"></td>
-     <td class=square id=6 onclick="select_square(this.id);"></td>
     </tr><tr>
+     <td class=square id=6 onclick="select_square(this.id);"></td>
      <td class=square id=7 onclick="select_square(this.id);"></td>
      <td class=square id=8 onclick="select_square(this.id);"></td>
-     <td class=square id=9 onclick="select_square(this.id);"></td>
     </tr>
     </table>
     </td>
     <td>
-    <div id='myuuid'><div>
+    <div id='myuuid'></div>
+    <div id='turn'></div>
     <div id="lobby">
         <p>LOBBY</p>
         <table align=center cellspacing=2>
