@@ -103,13 +103,85 @@ function draw_grid(map) {
     }
 }
 
+function check_winner(map) {
+    if (map[0] != '') {
+        if (map[0] == map[1] && map[0] == map[2]) {
+            return map[0];
+        }
+        if (map[0] == map[4] && map[0] == map[8]) {
+            return map[0];
+        }
+        if (map[0] == map[3] && map[0] == map[6]) {
+            return map[0];
+        }
+    }
+    if (map[3] != '') {
+        if (map[3] == map[4] && map[3] == map[5]) {
+            return map[3];
+        }
+    }
+    if (map[6] != '') {
+        if (map[6] == map[7] && map[6] == map[8]) {
+            return map[6];
+        }
+        if (map[6] == map[4] && map[6] == map[2]) {
+            return map[6];
+        }
+    }
+    if (map[1] != '') {
+        if (map[1] == map[4] && map[1] == map[7]) {
+            return map[1];
+        }
+    }
+    if (map[2] != '') {
+        if (map[2] == map[5] && map[2] == map[8]) {
+            return map[2];
+        }
+    }
+    return null;
+}
+
+function declare_winner(symbol) {
+    var winner = '';
+    if (symbol == games[game_no].symbol) {
+        // I am the winner
+        //alert("Congrats you won");
+        winner = pubnub.get_uuid();
+    } else {
+        //alert("You lost");
+        winner = games[game_no].uuid;
+    }
+    var message = {
+        'mtype' : 'winner',
+        'game_id' : game_no,
+        'winner' : winner
+    }
+    pubnub.publish({
+        'channel' : game_no,
+        'message' : message,
+        'callback' : function(r){console.log(JSON.stringify(r))},
+        'error' : function(r){console.log(JSON.stringify(r))}
+    })
+}
+
 function handle_game_messages(message) {
-    console.log()
     if (message['mtype'] == 'game') {
         games[message['game_id']].map = message.map;
         draw_grid(games[message['game_id']].map);
         games[game_no]['turn'] = message['turn'];
         update_turn(games[game_no]['turn']);
+        var winning_symbol = check_winner(games[message['game_id']].map);
+        if (winning_symbol) {
+            declare_winner(winning_symbol);
+        }
+        
+    }
+    if (message['mtype'] == 'winner') {
+        if (message['winner'] == pubnub.get_uuid()) {
+            alert("You won");
+        } else {
+            alert("You lost");
+        }
     }
 
 }
