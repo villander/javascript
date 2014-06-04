@@ -177,10 +177,13 @@ function handle_game_messages(message) {
         
     }
     if (message['mtype'] == 'winner') {
-        if (message['winner'] == pubnub.get_uuid()) {
-            alert("You won");
-        } else {
-            alert("You lost");
+        if (games[message['game_id']]) {
+            if (message['winner'] == pubnub.get_uuid()) {
+                alert("You won");
+            } else {
+                alert("You lost");
+            }
+            delete games[message['game_id']];
         }
     }
 
