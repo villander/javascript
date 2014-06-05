@@ -343,7 +343,7 @@ function enter_lobby() {
 
                                     // leave lobby. we might want to remove this in case playing multiple games
                                     // at same time is going to be supported later on.
-                                    pubnub.unsubscribe({channel : get_lobby_channel()}); 
+                                    //pubnub.unsubscribe({channel : get_lobby_channel()}); 
                                     
                                     // create a private channel to play the game.
                                     pubnub.subscribe({
@@ -373,7 +373,7 @@ function enter_lobby() {
 
                                     // leave lobby. we might want to remove this in case playing multiple games
                                     // at same time is going to be supported later on.                                    
-                                    pubnub.unsubscribe({channel : get_lobby_channel()});
+                                    //pubnub.unsubscribe({channel : get_lobby_channel()});
 
                                     pubnub.subscribe({
                                         'channel' : r['game_id'],
@@ -400,6 +400,7 @@ function enter_lobby() {
 
         },
         connect : function(r) {
+            /*
             pubnub.here_now({
                 'channel' : get_lobby_channel(),
                 'callback' : function(r) {
@@ -416,16 +417,16 @@ function enter_lobby() {
 
                 }
             });
+*/
             
         },
         presence : function(r) {
               /*$("#lobby table").append('<tr><td onclick="start_handshake(this.innerHTML, this.innerHTML);">'+r.uuid+'</td></tr>') */
-              if (r.action == 'join' && r.uuid != pubnub.get_uuid()) {
-                start_handshake(r.uuid , r.uuid);
-              }
+            /*
             if (r.action == 'join' && r.uuid != pubnub.get_uuid()) {
                 start_handshake(r.uuid , r.uuid);
-              }
+            }
+            */
         }
     });
 }
@@ -482,7 +483,10 @@ function start() {
 </head>
 <body onload="start()">
 <table id="main">
-
 </table>
+<div id=lobby>
+<table>
+</table>
+</div>
 </body>
 </html>
