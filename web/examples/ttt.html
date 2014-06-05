@@ -2,12 +2,36 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
+<style type="text/css">
+
+.square {
+ background-color:white;
+ font-size:1cm;
+ width: 2cm;
+ height: 2cm;
+ vertical-align: center;
+ text-align: center;
+}
+
+.green {
+    color: green;
+    font-size: 24px;
+}
+.red {
+    color : red;
+    font-size: 24px;
+}
+
+.grid {
+ border: black;
+ background-color:black;
+}
+
+</style>
+
 <title>Tic-Tac-Toe</title>
 <script src="../pubnub.js"></script>
-<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>.
-<script type="text/javascript" language=javascript>
-
-var lobby_channel = 'lobby1'
+<script type="text/javascript">
 
 var pubnub = PUBNUB({
     publish_key   : "pub-c-fd1a1d00-6c07-4435-a647-495cdfcdfc95",
@@ -16,39 +40,15 @@ var pubnub = PUBNUB({
     leave_on_unload : true
 });
 
-var debug = false;
+</script>
+<script src="./ttt.js"></script>
+<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>.
+<script type="text/javascript" language=javascript>
+
+
 
 var games = {}
-var game_no = '';
-var step_timeout = null;
 
-var turn_time_remaining = 30;
-var turn_time_remaining_timer = null
-
-function debug_log(message) {
-    if (debug) {
-        console.log(message);
-    }
-}
-
-function is_uuid_in_lobby(uuid, callback, error) {
-    pubnub.where_now({
-        'uuid'     : uuid,
-        'callback' : function(r) {
-             callback((r['channels'].indexOf(lobby_channel) == -1)?false:true);
-        },
-        'error'    : function(r) {
-
-        }
-    });
-}
-
-function get_player_list(callback){
-    pubnub.here_now({
-        'channel' : lobby_channel,
-        'callback' : callback
-    })
-}
 
 function start_handshake(uuid, turn) {
     var message = {
@@ -61,7 +61,7 @@ function start_handshake(uuid, turn) {
     };
 
     pubnub.publish({
-        'channel' : lobby_channel,
+        'channel' : get_lobby_channel(),
         'message' : message,
         'callback' : function(r) {debug_log(r)},
         'error' : function(r) {debug_log(r)}  
@@ -75,11 +75,11 @@ function start_handshake_2(uuid, turn) {
         'p1_uuid' : uuid,
         'turn' : turn,
         'p2_uuid' : pubnub.get_uuid(),
-        'game_id' : Math.random()
+        'game_id' : getRandomInt(1,10000000000)
     };
 
     pubnub.publish({
-        'channel' : lobby_channel,
+        'channel' : get_lobby_channel(),
         'message' : message,
         'callback' : function(r) {debug_log(r)},
         'error' : function(r) {debug_log(r)}   
@@ -97,172 +97,228 @@ function start_handshake_3(uuid, turn, game_id) {
     };
 
     pubnub.publish({
-        'channel' : lobby_channel,
+        'channel' : get_lobby_channel(),
         'message' : message,
         'callback' : function(r) {debug_log(r)},
         'error' : function(r) {debug_log(r)}  
     });
 }
 
-function clear_timers() {
-    clearInterval(turn_time_remaining_timer);
-    clearTimeout(step_timeout);
-    turn_time_remaining= 30;
+function clear_timers(game_id) {
+    var game = games[game_id];
+    if (game) {
+        clearInterval(game['interval']);
+        clearTimeout(game['timeout']);
+        game['time_remaining'] = 30;
+    }
 }
 
 function update_time_remaining(n) {
     $("#time").html('<p>'+n+' sec remaining</p>');
 }
 
-function update_turn(uuid) {
+function update_turn(game_id, uuid) {
 
-    debug_log(uuid + ' : ' + pubnub.get_uuid());
-    $("#turn").html('<p>' + ((uuid == pubnub.get_uuid())?"Your ":"Opponent\'s") + ' turn</p>');
-    $("#turn").removeClass((uuid == pubnub.get_uuid())?"red":"green");
-    $("#turn").addClass((uuid == pubnub.get_uuid())?"green":"red");
+    var game = games[game_id];
+    if (game) {
 
-    clear_timers();
-    
-    if (uuid == pubnub.get_uuid()) {
-        step_timeout = setTimeout(function(){
-            update_result('You lost');
-            declare_winner((games[game_no]['symbol'] == 'X')?'O':'X');
-            clear_timers();
-            $("#time").html('');
-        }, 30000)
-        turn_time_remaining_timer = setInterval(function() { update_time_remaining(turn_time_remaining); turn_time_remaining-- }, 1000);
+        $("#" + game_id + " #turn").html('<p>' + ((uuid == pubnub.get_uuid())?"Your ":"Opponent\'s") + ' turn</p>');
 
-    } else {
-        $("#time").html('');
+        $("#" + game_id + " #turn").removeClass((uuid == pubnub.get_uuid())?"red":"green");
+        $("#" + game_id + " #turn").addClass((uuid == pubnub.get_uuid())?"green":"red");
+
+        clear_timers(game_id);
+        
+        if (uuid == pubnub.get_uuid()) {
+            game['timeout'] = setTimeout(function(){
+                update_result('You lost');
+                declare_winner((game['symbol'] == 'X')?'O':'X');
+                clear_timers(game_id);
+                $("#" + game_id + " #time").html('');
+            }, 30000)
+            game['interval'] = setInterval(function() {
+                update_time_remaining(game['time_remaining']);
+                game['time_remaining']--;
+            }, 1000);
+
+        } else {
+            $("#" + game_id + " #time").html('');
+        }
     }
 }
 
 
 
-function update_result(result) {
-    clear_timers();
-    $("#turn").empty();
-    $("#result").html('<p>' + result + '</p>');
-    $("#result").addClass((result == "You won")?"green":"red");
+function update_result(game_id, result) {
+    clear_timers(game_id);
+    $("#" + game_id + " #turn").empty();
+    $("#" + game_id + " #result").html('<p>' + result + '</p>');
+    $("#" + game_id + " #result").addClass((result == "You won")?"green":"red");
 }
 
-function update_opponent(opponent) {
-    $("#opponentuuid").html('<p> Opponent UUID: ' + opponent + '</p>');
+function update_my_uuid(game_id, uuid) {
+    $("#" + game_id + " #my_uuid").html('<p> My UUID: ' + uuid + '</p>');
 }
 
-function update_game_status(status) {
-    $("#game").html('<p>' + status + '</p>');
+function update_opponent(game_id, uuid) {
+    $("#" + game_id + " #opponent_uuid").html('<p> Opponent UUID: ' + uuid + '</p>');
 }
 
-function draw_grid(symbol, map) {
+function update_game_status(game_id, status) {
+    $("#" + game_id + " #game").html('<p>' + status + '</p>');
+}
+
+function draw_grid(game_id, symbol, map) {
     for (var i in map) {
-        $("#" + i).html(map[i]);
+        $("#" + game_id + " #" + i).html(map[i]);
         
         if (symbol == map[i]) {
-            $("#" + i).removeClass("red");
-            $("#" + i).addClass("green");
+            $("#" + game_id + " #" + i).removeClass("red");
+            $("#" + game_id + " #" + i).addClass("green");
         } else {
-            $("#" + i).removeClass("green");
-            $("#" + i).addClass("red");
+            $("#" + game_id + " #" + i).removeClass("green");
+            $("#" + game_id + " #" + i).addClass("red");
         }
-
     }
 }
 
-function check_winner(map) {
-    if (map[0] != '') {
-        if (map[0] == map[1] && map[0] == map[2]) {
-            return map[0];
-        }
-        if (map[0] == map[4] && map[0] == map[8]) {
-            return map[0];
-        }
-        if (map[0] == map[3] && map[0] == map[6]) {
-            return map[0];
-        }
-    }
-    if (map[3] != '') {
-        if (map[3] == map[4] && map[3] == map[5]) {
-            return map[3];
-        }
-    }
-    if (map[6] != '') {
-        if (map[6] == map[7] && map[6] == map[8]) {
-            return map[6];
-        }
-        if (map[6] == map[4] && map[6] == map[2]) {
-            return map[6];
-        }
-    }
-    if (map[1] != '') {
-        if (map[1] == map[4] && map[1] == map[7]) {
-            return map[1];
-        }
-    }
-    if (map[2] != '') {
-        if (map[2] == map[5] && map[2] == map[8]) {
-            return map[2];
-        }
-    }
-    return null;
-}
 
-function declare_winner(symbol) {
+
+function declare_winner(game_id, symbol) {
     var winner = '';
-    if (symbol == games[game_no].symbol) {
-        winner = pubnub.get_uuid();
-    } else {
-        winner = games[game_no].uuid;
+    var game = games[game_id];
+
+    if (game) {
+        if (symbol == game['symbol']) {
+            winner = pubnub.get_uuid();
+        } else {
+            winner = game['uuid'];
+        }
+        var message = {
+            'mtype' : 'winner',
+            'game_id' : game_id,
+            'winner' : winner
+        }
+        pubnub.publish({
+            'channel' : game_id,
+            'message' : message,
+            'callback' : function(r){debug_log(JSON.stringify(r))},
+            'error' : function(r){debug_log(JSON.stringify(r))}
+        })
     }
-    var message = {
-        'mtype' : 'winner',
-        'game_id' : game_no,
-        'winner' : winner
-    }
-    pubnub.publish({
-        'channel' : game_no,
-        'message' : message,
-        'callback' : function(r){debug_log(JSON.stringify(r))},
-        'error' : function(r){debug_log(JSON.stringify(r))}
-    })
 }
 
 function handle_game_messages(message) {
+
     if (message['mtype'] == 'game') {
-        games[message['game_id']].map = message.map;
-        draw_grid(games[message['game_id']]['symbol'] , games[message['game_id']].map);
-        games[game_no]['turn'] = message['turn'];
-        update_turn(games[game_no]['turn']);
-        var winning_symbol = check_winner(games[message['game_id']].map);
-        if (winning_symbol) {
-            declare_winner(winning_symbol);
+
+        var gid_in_message = message['game_id'];
+        var game = games[gid_in_message];
+
+        if (game) {
+            game['map'] = message['map'];
+
+            draw_grid(gid_in_message, game['symbol'] , game['map']);
+
+            game['turn'] = message['turn'];
+
+            update_turn(gid_in_message, game['turn']);
+            
+            var winning_symbol = check_winner(game['map']);
+
+            if (winning_symbol) {
+                declare_winner(gid_in_message, winning_symbol);
+            }
         }
         
     }
     if (message['mtype'] == 'winner') {
         if (games[message['game_id']]) {
-            if (message['winner'] == pubnub.get_uuid()) {
-                update_result("You won");
-                update_game_status('Game Id: ' + message.game_id + ' finished');
-            } else {
-                update_result("You lost");
-                update_game_status('Game Id: ' + message.game_id + ' finished');
-            }
-            delete games[message['game_id']];
+            end_game(message['game_id'], message['winner']);
         }
     }
 
 }
 
-function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+function get_game_id_from_cell(node) {
+    return node.parentNode.parentNode.parentNode.parentNode.parentNode.id;
 }
 
 
+function select_cell(cell) {
+    game_step(get_game_id_from_cell(cell), cell.id);
+}
+
+function create_grid(game_id) {
+     $("#main").append("<tr></tr>");
+     $("#main").append(
+        '<tr id=' + game_id + '>'                                                               +
+            '<td>'                                                                              +
+                '<table align=center class=grid cellspacing=2>'                                 +
+                    '<tr>'                                                                      +
+                         '<td class=square id=0 onclick="select_cell(this);"></td>'             +
+                         '<td class=square id=1 onclick="select_cell(this);"></td>'             +
+                         '<td class=square id=2 onclick="select_cell(this);"></td>'             +
+                    '</tr>'                                                                     +
+                    '<tr>'                                                                      +
+                         '<td class=square id=3 onclick="select_cell(this);"></td>'             +
+                         '<td class=square id=4 onclick="select_cell(this);"></td>'             +
+                         '<td class=square id=5 onclick="select_cell(this);"></td>'             +
+                    '</tr>'                                                                     +
+                    '<tr>'                                                                      +
+                         '<td class=square id=6 onclick="select_cell(this);"></td>'             +
+                         '<td class=square id=7 onclick="select_cell(this);"></td>'             +
+                         '<td class=square id=8 onclick="select_cell(this);"></td>'             +
+                    '</tr>'                                                                     +
+                '</table>'                                                                      +
+            '</td>'                                                                             +
+            '<td>'                                                                              +
+                '<div id="game"></div>'                                                         +
+                '<div id="my_uuid"></div>'                                                       +
+                '<div id="opponent_uuid"></div>'                                                +
+                '<div id="turn"></div>'                                                         +
+                '<div id="time"></div>'                                                         +
+                '<div id="result"></div>'                                                       +
+            '</td>'                                                                             +
+        '</tr>'
+    );
+
+}
+
+
+function create_game(game_id, opponent_uuid, my_symbol, turn_uuid) {
+    games[game_id] = {
+        'map'           : ['','','','','','','','',''],
+        'uuid'          : opponent_uuid,
+        'symbol'        : my_symbol,
+        'turn'          : turn_uuid,
+        'timeout'           : null,
+        'interval'          : null,
+        'time_remaining'    : 30
+    };
+    create_grid(game_id);
+    update_opponent(game_id, opponent_uuid);
+    update_my_uuid(game_id, pubnub.get_uuid());
+    update_game_status(game_id, 'Game Started');
+    update_turn(game_id, turn_uuid);
+}
+
+function end_game(game_id, winner_uuid) {
+    update_game_status(game_id, 'finished');
+
+    if (winner_uuid == pubnub.get_uuid()) {
+        update_result(game_id, "You won");
+    } else {
+        update_result(game_id, "You lost");
+
+    }
+    delete games[game_id];
+}
+
 function enter_lobby() {
     pubnub.subscribe({
-        'channel' : lobby_channel,
-        'callback' : function(r) {debug_log(JSON.stringify(r));
+        'channel' : get_lobby_channel(),
+        'callback' : function(r) {
 
             /* read message only if we are either player 1 or player 2 */
 
@@ -276,22 +332,22 @@ function enter_lobby() {
 
                             case 1: // some one has asked us to play
 
-                                if (r['p2_uuid'] == pubnub.get_uuid()) {
-                                    var ok = true;//confirm(r.p1_uuid + ' has requested to play with you. Are you game ?');
-                                    if (ok) {
-                                        start_handshake_2(r['p1_uuid'], r['turn']);
-                                    }
+                                if (r['p2_uuid'] == pubnub.get_uuid()) { // we are player 2, send handshake
+                                    start_handshake_2(r['p1_uuid'], r['turn']);
                                 }   
                                 break;
 
                             case 2: // some has responded to our play request
-                                if (r['p1_uuid'] == pubnub.get_uuid()) {
 
+                                if (r['p1_uuid'] == pubnub.get_uuid()) { // we are player 1, we send initial request
 
-                                    debug_log(JSON.stringify(games));
-                                    pubnub.unsubscribe({channel : lobby_channel});
+                                    // leave lobby. we might want to remove this in case playing multiple games
+                                    // at same time is going to be supported later on.
+                                    pubnub.unsubscribe({channel : get_lobby_channel()}); 
+                                    
+                                    // create a private channel to play the game.
                                     pubnub.subscribe({
-                                        'channel' : r.game_id,
+                                        'channel' : r['game_id'],
                                         'callback' : function(r1) {
                                             handle_game_messages(r1);
                                         },
@@ -300,25 +356,27 @@ function enter_lobby() {
                                         },
                                         'connect' : function(r1) {
 
-                                            
-                                            update_turn(r['turn']);
+                                            // send handshake 3 to acknowledge that we are starting
+
                                             start_handshake_3(r['p2_uuid'], r['turn'], r['game_id']);
-                                            game_no = r.game_id;
                                     
-                                            games[r['game_id']] = {'map' : ['','','','','','','','',''], 'uuid' : r['p2_uuid'], 'symbol' : 'X', 'turn' : r['turn']}
-                                            update_opponent(r['p2_uuid']);
-                                            update_game_status('Game Id: ' + r.game_id + ' started');
-                                            //alert(r.p2_uuid + ' accepted your request. GAME STARTED. Game ID : ' + r.game_id);
+                                            create_game(r['game_id'], r['p2_uuid'], 'X', r['turn']);
+
                                         }
                                     });
                                 }
                                 break;
 
                             case 3: // some one has confirmed the game
-                                if (r['p2_uuid'] == pubnub.get_uuid()) {
-                                    pubnub.unsubscribe({channel : lobby_channel});
+
+                                if (r['p2_uuid'] == pubnub.get_uuid()) { // we are player 2, player 1 has confirmed 
+
+                                    // leave lobby. we might want to remove this in case playing multiple games
+                                    // at same time is going to be supported later on.                                    
+                                    pubnub.unsubscribe({channel : get_lobby_channel()});
+
                                     pubnub.subscribe({
-                                        'channel' : r.game_id,
+                                        'channel' : r['game_id'],
                                         'callback' : function(r1) {
                                             handle_game_messages(r1);
                                         },
@@ -326,13 +384,9 @@ function enter_lobby() {
 
                                         },
                                         'connect' : function(r1) {
-                                            
-                                            game_no = r.game_id;
-                                            games[r['game_id']] = {'map' : ['','','','','','','','',''], 'uuid' : r['p1_uuid'], 'symbol' : 'O', 'turn' : r['turn']}
-                                            update_opponent(r['p1_uuid']);
-                                            update_game_status('Game Id: ' + r.game_id + ' started');
-                                            //alert('GAME Confirmed with ' + r.p1_uuid + ' . Game ID : ' + r.game_id);
-                                            update_turn(r['turn']);
+
+                                            create_game(r['game_id'], r['p1_uuid'], 'O', r['turn']);
+
                                         }
                                     });
                                 }
@@ -347,7 +401,7 @@ function enter_lobby() {
         },
         connect : function(r) {
             pubnub.here_now({
-                'channel' : lobby_channel,
+                'channel' : get_lobby_channel(),
                 'callback' : function(r) {
                     var uuids = r.uuids;
                     var i = getRandomInt(0,uuids.length - 1);
@@ -376,35 +430,34 @@ function enter_lobby() {
     });
 }
 
-function game_step(position) {
-    debug_log(position);
-    if (games[game_no].map[position] == '' && games[game_no]['turn'] == pubnub.get_uuid()) {
-        
-        var m = [];
+function game_step(game_id, position) {
 
-        for ( var i in games[game_no].map) {
-            m[i] = games[game_no].map[i];
+    var game = games[game_id];
+    if (game) {
+        if (game['map'][position] == '' && game['turn'] == pubnub.get_uuid()) {
+            
+            var m = [];
+
+            for ( var i in game['map']) {
+                m[i] = game['map'][i];
+            }
+            m[position] = game['symbol'];
+            var message = {
+                'mtype' : 'game',
+                'game_id' : game_id,
+                'map' : m,
+                'turn' : game['uuid']
+            }
+            pubnub.publish({
+                'channel' : game_id,
+                'message' : message,
+                'callback' : function(r){try {game['map'][position] = 'X';} catch (e) {}debug_log(JSON.stringify(r))},
+                'error' : function(r){debug_log(JSON.stringify(r))}
+            })
         }
-        m[position] = games[game_no].symbol;
-        var message = {
-            'mtype' : 'game',
-            'game_id' : game_no,
-            'map' : m,
-            'turn' : games[game_no].uuid
-        }
-        pubnub.publish({
-            'channel' : game_no,
-            'message' : message,
-            'callback' : function(r){try {games[game_no].map[position] = 'X';} catch (e) {}debug_log(JSON.stringify(r))},
-            'error' : function(r){debug_log(JSON.stringify(r))}
-        })
     }
 }
 
-function select_square(n) {
-    debug_log(n);
-    game_step(n);
-}
 
 function populate_lobby() {
     get_player_list(function(r){
@@ -421,79 +474,15 @@ function populate_lobby() {
     })
 }
 function start() {
-    clear_timers();
-    $("#myuuid").html('<p> My UUID: ' + pubnub.get_uuid() + '</p>');
-    $("#opponentuuid").empty();
-    $("#result").empty();
-    $("#game").html('<p> Waiting for players to join enter lobby </p>');
     populate_lobby();
 }
 
 </script>
-<style type="text/css">
-
-.square {
- background-color:white;
- font-size:1cm;
- width: 2cm;
- height: 2cm;
- vertical-align: center;
- text-align: center;
-}
-
-.green {
-    color: green;
-    font-size: 24px;
-}
-.red {
-    color : red;
-    font-size: 24px;
-}
-
-.grid {
- border: black;
- background-color:black;
-}
-
-</style>
 
 </head>
 <body onload="start()">
-<table>
-<tr>
-    <td>
-    <table align=center class=grid cellspacing=2>
-    <tr>
-     <td class=square id=0 onclick="select_square(this.id);"></td>
-     <td class=square id=1 onclick="select_square(this.id);"></td>
-     <td class=square id=2 onclick="select_square(this.id);"></td>
-    </tr><tr>
-     <td class=square id=3 onclick="select_square(this.id);"></td>
-     <td class=square id=4 onclick="select_square(this.id);"></td>
-     <td class=square id=5 onclick="select_square(this.id);"></td>
-    </tr><tr>
-     <td class=square id=6 onclick="select_square(this.id);"></td>
-     <td class=square id=7 onclick="select_square(this.id);"></td>
-     <td class=square id=8 onclick="select_square(this.id);"></td>
-    </tr>
-    </table>
-    </td>
-    <td>
-    <div id='game'></div>
-    <div id='myuuid'></div>
-    <div id='opponentuuid'></div>
-    <div id='turn'></div>
-    <div id='time'></div>
-    <div id='result'></div>
-    <!--
-    <div id="lobby">
-        <p>LOBBY</p>
-        <table align=center cellspacing=2>
-        </table>
-    </div>
-    -->
-    </td>
-</tr>
+<table id="main">
+
 </table>
 </body>
 </html>
