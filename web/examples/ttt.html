@@ -293,9 +293,9 @@ function select_cell(cell) {
 }
 
 function create_grid(game_id) {
-     $("#main").prepend("<tr></tr>");
-     $("#main").prepend(
-        '<tr id=' + game_id + '>'                                                               +
+
+    var grid_html =         
+    '<tr id=' + game_id + '>'                                                               +
             '<td>'                                                                              +
                 '<table align=center class=grid cellspacing=2>'                                 +
                     '<tr>'                                                                      +
@@ -317,15 +317,17 @@ function create_grid(game_id) {
             '</td>'                                                                             +
             '<td>'                                                                              +
                 '<div id="game"></div>'                                                         +
-                '<div id="my_uuid"></div>'                                                       +
+                '<div id="my_uuid"></div>'                                                      +
                 '<div id="opponent_uuid"></div>'                                                +
                 '<div id="turn"></div>'                                                         +
                 '<div id="time"></div>'                                                         +
                 '<div id="result"></div>'                                                       +
             '</td>'                                                                             +
         '</tr>'
-    );
 
+
+     $("#main").prepend("<tr></tr>");
+     $("#main").prepend(grid_html);
 }
 
 
@@ -408,7 +410,7 @@ function enter_lobby() {
 
                                             start_handshake_3(r['p2_uuid'], r['turn'], r['game_id']);
                                     
-                                            create_game(r['game_id'], r['p2_uuid'], 'X', r['turn']);
+                                            create_game(r['game_id'], r['p2_uuid'], get_symbol(), r['turn']);
 
                                         }
                                     });
@@ -433,7 +435,7 @@ function enter_lobby() {
                                         },
                                         'connect' : function(r1) {
 
-                                            create_game(r['game_id'], r['p1_uuid'], 'O', r['turn']);
+                                            create_game(r['game_id'], r['p1_uuid'], get_symbol('O'), r['turn']);
 
                                         }
                                     });

@@ -89,6 +89,10 @@ function is_uuid_in_lobby(uuid, callback, error) {
     });
 }
 
+function get_symbol(s) {
+    return (get_url_vars()['symbol'] || s || 'X');
+}
+
 function get_uid() {
     return (get_url_vars()['uid'] || PUBNUB.uuid() + ((is_auto_play())?'-BOT':'') );
 }
