@@ -73,6 +73,13 @@ var current_game_count = 0;
 var games = {}
 var lobby = []
 
+function get_my_num(game_id) {
+    return games[game_id]['num'];
+}
+
+function get_opponent_num(game_id) {
+    return ((games[game_id]['num'] == 1)?2:1);
+}
 
 function start_handshake(uuid, turn) {
     var message = {
@@ -99,7 +106,8 @@ function start_handshake_2(uuid, turn) {
         'p1_uuid' : uuid,
         'turn' : turn,
         'p2_uuid' : pubnub.get_uuid(),
-        'game_id' : getRandomInt(1,10000000000)
+        'game_id' : getRandomInt(1,10000000000),
+        'symbol' : get_symbol(2)
     };
 
     pubnub.publish({
@@ -117,7 +125,8 @@ function start_handshake_3(uuid, turn, game_id) {
         'p1_uuid' : pubnub.get_uuid(),
         'p2_uuid' : uuid,
         'turn' : turn,
-        'game_id' : game_id
+        'game_id' : game_id,
+        'symbol' : get_symbol(1)
     };
 
     pubnub.publish({
@@ -157,12 +166,12 @@ function update_turn(game_id, uuid) {
             if (is_auto_play()) {
                 console.log('autoplay');
                 game_step(game_id,
-                    get_next_move(game['map'], game['symbol'], (game['symbol'] == 'X')?'O':'X'));
+                    get_next_move(game['map'], get_my_num(game_id), get_opponent_num(game_id)));
                 return;
             }
 
             game['timeout'] = setTimeout(function(){
-                declare_winner(game_id, (game['symbol'] == 'X')?'O':'X');
+                declare_winner(game_id, get_opponent_num(game_id));
                 //end_game(game_id, game['uuid']);
                 clear_timers(game_id);
             }, 30000)
@@ -201,13 +210,24 @@ function update_opponent(game_id, uuid) {
     $("#" + game_id + " #opponent_uuid").html('<p> Opponent UUID: ' + uuid + '</p>');
 }
 
+function get_print_symbol(game_id, s) {
+    if (s == 0) {
+        return '';
+    }
+    if (s == get_my_num(game_id)) {
+        return games[game_id]['symbol'];
+    } 
+    if (s == get_opponent_num(game_id)) {
+        return games[game_id]['opponent_symbol'];
+    } 
+}
 function update_game_status(game_id, status) {
     $("#" + game_id + " #game").html('<p>' + status + '</p>');
 }
 
 function draw_grid(game_id, symbol, map) {
     for (var i in map) {
-        $("#" + game_id + " #" + i).html(map[i]);
+        $("#" + game_id + " #" + i).html(get_print_symbol(game_id, map[i]));
         
         if (symbol == map[i]) {
             $("#" + game_id + " #" + i).removeClass("red");
@@ -226,9 +246,9 @@ function declare_winner(game_id, symbol) {
     var game = games[game_id];
 
     if (game) {
-        if (symbol == game['symbol']) {
+        if (symbol == get_my_num(game_id)) {
             winner = pubnub.get_uuid();
-        } else if (symbol != ''){
+        } else if (symbol != 0){
             winner = game['uuid'];
         } else {
             winner = '';
@@ -257,7 +277,7 @@ function handle_game_messages(message) {
         if (game) {
             game['map'] = message['map'];
 
-            draw_grid(gid_in_message, game['symbol'] , game['map']);
+            draw_grid(gid_in_message, get_my_num(gid_in_message) , game['map']);
 
             game['turn'] = message['turn'];
             
@@ -338,22 +358,26 @@ function create_grid(game_id) {
 }
 
 
-function create_game(game_id, opponent_uuid, my_symbol, turn_uuid) {
+function create_game(game_id, opponent_uuid, my_symbol, turn_uuid, num, opponent_symbol) {
     games[game_id] = {
-        'map'           : ['','','','','','','','',''],
-        'uuid'          : opponent_uuid,
-        'symbol'        : my_symbol,
-        'turn'          : turn_uuid,
+        'map'               : [0,0,0,0,0,0,0,0,0],
+        'uuid'              : opponent_uuid,
+        'symbol'            : my_symbol,
+        'turn'              : turn_uuid,
         'timeout'           : null,
         'interval'          : null,
-        'time_remaining'    : 30
+        'time_remaining'    : 30,
+        'num'               : num,
+        'opponent_symbol'   : opponent_symbol
     };
+    console.log(JSON.stringify(games[game_id]));
     create_grid(game_id);
     update_opponent(game_id, opponent_uuid);
     update_my_uuid(game_id, pubnub.get_uuid());
     update_game_status(game_id, 'Game Started');
     update_turn(game_id, turn_uuid);
     current_game_count++;
+
 }
 
 function end_game(game_id, winner_uuid) {
@@ -395,7 +419,6 @@ function enter_lobby() {
                                 break;
 
                             case 2: // some has responded to our play request
-
                                 if (r['p1_uuid'] == pubnub.get_uuid()) { // we are player 1, we send initial request
 
                                     // leave lobby. we might want to remove this in case playing multiple games
@@ -417,7 +440,7 @@ function enter_lobby() {
 
                                             start_handshake_3(r['p2_uuid'], r['turn'], r['game_id']);
                                     
-                                            create_game(r['game_id'], r['p2_uuid'], get_symbol(), r['turn']);
+                                            create_game(r['game_id'], r['p2_uuid'], get_symbol(1), r['turn'], 1, r['symbol']);
 
                                         }
                                     });
@@ -442,7 +465,7 @@ function enter_lobby() {
                                         },
                                         'connect' : function(r1) {
 
-                                            create_game(r['game_id'], r['p1_uuid'], get_symbol('O'), r['turn']);
+                                            create_game(r['game_id'], r['p1_uuid'], get_symbol(2), r['turn'], 2, r['symbol']);
 
                                         }
                                     });
@@ -515,14 +538,15 @@ function game_step(game_id, position) {
 
     var game = games[game_id];
     if (game) {
-        if (game['map'][position] == '' && game['turn'] == pubnub.get_uuid()) {
+        if (game['map'][position] == 0 && game['turn'] == pubnub.get_uuid()) {
             
             var m = [];
 
             for ( var i in game['map']) {
                 m[i] = game['map'][i];
             }
-            m[position] = game['symbol'];
+
+            m[position] = get_my_num(game_id);
             var message = {
                 'mtype' : 'game',
                 'game_id' : game_id,
@@ -532,7 +556,7 @@ function game_step(game_id, position) {
             pubnub.publish({
                 'channel' : game_id,
                 'message' : message,
-                'callback' : function(r){try {game['map'][position] = 'X';} catch (e) {}debug_log(JSON.stringify(r))},
+                'callback' : function(r){try {game['map'][position] = get_my_num(game_id);} catch (e) {}debug_log(JSON.stringify(r))},
                 'error' : function(r){debug_log(JSON.stringify(r))}
             })
         }

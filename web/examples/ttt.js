@@ -1,14 +1,14 @@
 
 function is_draw(map) {
     for ( var i in map) {
-        if (map[i] == '')
+        if (map[i] == 0)
             return false;
     }
     return true;
 }
 
 function check_winner(map) {
-    if (map[0] != '') {
+    if (map[0] != 0) {
         if (map[0] == map[1] && map[0] == map[2]) {
             return map[0];
         }
@@ -19,12 +19,12 @@ function check_winner(map) {
             return map[0];
         }
     }
-    if (map[3] != '') {
+    if (map[3] != 0) {
         if (map[3] == map[4] && map[3] == map[5]) {
             return map[3];
         }
     }
-    if (map[6] != '') {
+    if (map[6] != 0) {
         if (map[6] == map[7] && map[6] == map[8]) {
             return map[6];
         }
@@ -32,12 +32,12 @@ function check_winner(map) {
             return map[6];
         }
     }
-    if (map[1] != '') {
+    if (map[1] != 0) {
         if (map[1] == map[4] && map[1] == map[7]) {
             return map[1];
         }
     }
-    if (map[2] != '') {
+    if (map[2] != 0) {
         if (map[2] == map[5] && map[2] == map[8]) {
             return map[2];
         }
@@ -93,8 +93,8 @@ function is_uuid_in_lobby(uuid, callback, error) {
     });
 }
 
-function get_symbol(s) {
-    return (get_url_vars()['symbol'] || s || 'X');
+function get_symbol(num) {
+    return (get_url_vars()['symbol'] ||  ((num == 1)?'X':'O'));
 }
 
 function get_uid() {
@@ -118,79 +118,79 @@ function get_next_move(map, symbol, opponent_symbol) {
 
 function winCheck(map, symbol, opponent_symbol) {
     
-    if(map[0] == symbol && map[1] == symbol && map[2] == '') {
+    if(map[0] == symbol && map[1] == symbol && map[2] == 0) {
         return 2;
     }
-    else if(map[1] == symbol && map[2] == symbol && map[0] == '') {
+    else if(map[1] == symbol && map[2] == symbol && map[0] == 0) {
         return 0;
     }
-    else if(map[3] == symbol && map[4] == symbol && map[5] == '') {
+    else if(map[3] == symbol && map[4] == symbol && map[5] == 0) {
         return 5;
     }
-    else if(map[4] == symbol && map[5] == symbol && map[3] == '') {
+    else if(map[4] == symbol && map[5] == symbol && map[3] == 0) {
         return 3;
     }
-    else if(map[6] == symbol && map[7] == symbol && map[8] == '') {
+    else if(map[6] == symbol && map[7] == symbol && map[8] == 0) {
         return 8;
     }
-    else if(map[7] == symbol && map[8] == symbol && map[6] == '') {
+    else if(map[7] == symbol && map[8] == symbol && map[6] == 0) {
         return 6;
     }
-    else if(map[0] == symbol && map[4] == symbol && map[8] == '') {
+    else if(map[0] == symbol && map[4] == symbol && map[8] == 0) {
         return 8;
     }
-    else if(map[4] == symbol && map[8] == symbol && map[0] == '') {
+    else if(map[4] == symbol && map[8] == symbol && map[0] == 0) {
         return 0;
     }
-    else if(map[2] == symbol && map[4] == symbol && map[6] == '') {
+    else if(map[2] == symbol && map[4] == symbol && map[6] == 0) {
         return 6;
     }
-    else if(map[6] == symbol && map[4] == symbol && map[2] == '') {
+    else if(map[6] == symbol && map[4] == symbol && map[2] == 0) {
         return 2;
     }
-    else if(map[0] == symbol && map[2] == symbol && map[1] == '') {
+    else if(map[0] == symbol && map[2] == symbol && map[1] == 0) {
         return 1;
     }
-    else if(map[3] == symbol && map[5] == symbol && map[4] == '') {
+    else if(map[3] == symbol && map[5] == symbol && map[4] == 0) {
         return 4;
     }
-    else if(map[6] == symbol && map[8] == symbol && map[7] == '') {
+    else if(map[6] == symbol && map[8] == symbol && map[7] == 0) {
         return 7;
     }
-    else if(map[0] == symbol && map[6] == symbol && map[3] == '') {
+    else if(map[0] == symbol && map[6] == symbol && map[3] == 0) {
         return 3;
     }
-    else if(map[1] == symbol && map[7] == symbol && map[4] == '') {
+    else if(map[1] == symbol && map[7] == symbol && map[4] == 0) {
         return 4;
     }
-    else if(map[2] == symbol && map[8] == symbol && map[5] == '') {
+    else if(map[2] == symbol && map[8] == symbol && map[5] == 0) {
         return 5;
     }
-    else if(map[0] == symbol && map[4] == symbol && map[8] == '') {
+    else if(map[0] == symbol && map[4] == symbol && map[8] == 0) {
         return 8;
     }
-    else if(map[3] == symbol && map[6] == symbol && map[0] == '') {
+    else if(map[3] == symbol && map[6] == symbol && map[0] == 0) {
         return 0;
     }
-    else if(map[4] == symbol && map[7] == symbol && map[1] == '') {
+    else if(map[4] == symbol && map[7] == symbol && map[1] == 0) {
         return 1;
     }
-    else if(map[5] == symbol && map[8] == symbol && map[2] == '') {
+    else if(map[5] == symbol && map[8] == symbol && map[2] == 0) {
         return 2;
     }
-    else if(map[0] == symbol && map[3] == symbol && map[6] == '') {
+    else if(map[0] == symbol && map[3] == symbol && map[6] == 0) {
         return 6;
     }
-    else if(map[1] == symbol && map[4] == symbol && map[7] == '') {
+    else if(map[1] == symbol && map[4] == symbol && map[7] == 0) {
         return 7;
     }
-    else if(map[2] == symbol && map[5] == symbol && map[8] == '') {
+    else if(map[2] == symbol && map[5] == symbol && map[8] == 0) {
         return 8;
     }
-    else if(map[0] == symbol && map[8] == symbol && map[4] == '') {
+    else if(map[0] == symbol && map[8] == symbol && map[4] == 0) {
         return 4;
     }
-    else if(map[2] == symbol && map[6] == symbol && map[4] == '') {
+    else if(map[2] == symbol && map[6] == symbol && map[4] == 0) {
         return 4;
     }
     else {
@@ -201,79 +201,79 @@ function winCheck(map, symbol, opponent_symbol) {
 
 function computer(map, symbol, opponent_symbol) {
 
-    if(map[0] == opponent_symbol && map[1] == opponent_symbol && map[2] == '') {
+    if(map[0] == opponent_symbol && map[1] == opponent_symbol && map[2] == 0) {
         return 2;
     }
-    else if(map[1] == opponent_symbol && map[2] == opponent_symbol && map[0] == '') {
+    else if(map[1] == opponent_symbol && map[2] == opponent_symbol && map[0] == 0) {
         return 0;
     }
-    else if(map[3] == opponent_symbol && map[4] == opponent_symbol && map[5] == '') {
+    else if(map[3] == opponent_symbol && map[4] == opponent_symbol && map[5] == 0) {
         return 5;
     }
-    else if(map[4] == opponent_symbol && map[5] == opponent_symbol && map[3] == '') {
+    else if(map[4] == opponent_symbol && map[5] == opponent_symbol && map[3] == 0) {
         return 3;
     }
-    else if(map[6] == opponent_symbol && map[7] == opponent_symbol && map[8] == '') {
+    else if(map[6] == opponent_symbol && map[7] == opponent_symbol && map[8] == 0) {
         return 8;
     }
-    else if(map[7] == opponent_symbol && map[8] == opponent_symbol && map[6] == '') {
+    else if(map[7] == opponent_symbol && map[8] == opponent_symbol && map[6] == 0) {
         return 6;
     }
-    else if(map[0] == opponent_symbol && map[4] == opponent_symbol && map[8] == '') {
+    else if(map[0] == opponent_symbol && map[4] == opponent_symbol && map[8] == 0) {
         return 8;
     }
-    else if(map[4] == opponent_symbol && map[8] == opponent_symbol && map[0] == '') {
+    else if(map[4] == opponent_symbol && map[8] == opponent_symbol && map[0] == 0) {
         return 0;
     }
-    else if(map[2] == opponent_symbol && map[4] == opponent_symbol && map[6] == '') {
+    else if(map[2] == opponent_symbol && map[4] == opponent_symbol && map[6] == 0) {
         return 6;
     }
-    else if(map[6] == opponent_symbol && map[4] == opponent_symbol && map[2] == '') {
+    else if(map[6] == opponent_symbol && map[4] == opponent_symbol && map[2] == 0) {
         return 2;
     }
-    else if(map[0] == opponent_symbol && map[2] == opponent_symbol && map[1] == '') {
+    else if(map[0] == opponent_symbol && map[2] == opponent_symbol && map[1] == 0) {
         return 1;
     }
-    else if(map[3] == opponent_symbol && map[5] == opponent_symbol && map[4] == '') {
+    else if(map[3] == opponent_symbol && map[5] == opponent_symbol && map[4] == 0) {
         return 4;
     }
-    else if(map[6] == opponent_symbol && map[8] == opponent_symbol && map[7] == '') {
+    else if(map[6] == opponent_symbol && map[8] == opponent_symbol && map[7] == 0) {
         return 7;
     }
-    else if(map[0] == opponent_symbol && map[6] == opponent_symbol && map[3] == '') {
+    else if(map[0] == opponent_symbol && map[6] == opponent_symbol && map[3] == 0) {
         return 3
     }
-    else if(map[1] == opponent_symbol && map[7] == opponent_symbol && map[4] == '') {
+    else if(map[1] == opponent_symbol && map[7] == opponent_symbol && map[4] == 0) {
         return 4;
     }
-    else if(map[2] == opponent_symbol && map[8] == opponent_symbol && map[5] == '') {
+    else if(map[2] == opponent_symbol && map[8] == opponent_symbol && map[5] == 0) {
         return 5;
     }
-    else if(map[0] == opponent_symbol && map[4] == opponent_symbol && map[8] == '') {
+    else if(map[0] == opponent_symbol && map[4] == opponent_symbol && map[8] == 0) {
         return 8;
     }
-    else if(map[3] == opponent_symbol && map[6] == opponent_symbol && map[0] == '') {
+    else if(map[3] == opponent_symbol && map[6] == opponent_symbol && map[0] == 0) {
         return 0;
     }
-    else if(map[4] == opponent_symbol && map[7] == opponent_symbol && map[1] == '') {
+    else if(map[4] == opponent_symbol && map[7] == opponent_symbol && map[1] == 0) {
         return 1;
     }
-    else if(map[5] == opponent_symbol && map[8] == opponent_symbol && map[2] == '') {
+    else if(map[5] == opponent_symbol && map[8] == opponent_symbol && map[2] == 0) {
         return 2;
     }
-    else if(map[0] == opponent_symbol && map[3] == opponent_symbol && map[6] == '') {
+    else if(map[0] == opponent_symbol && map[3] == opponent_symbol && map[6] == 0) {
         return 6;
     }
-    else if(map[1] == opponent_symbol && map[4] == opponent_symbol && map[7] == '') {
+    else if(map[1] == opponent_symbol && map[4] == opponent_symbol && map[7] == 0) {
         return 7;
     }
-    else if(map[2] == opponent_symbol && map[5] == opponent_symbol && map[8] == '') {
+    else if(map[2] == opponent_symbol && map[5] == opponent_symbol && map[8] == 0) {
         return 8;
     }
-    else if(map[0] == opponent_symbol && map[8] == opponent_symbol && map[4] == '') {
+    else if(map[0] == opponent_symbol && map[8] == opponent_symbol && map[4] == 0) {
         return 4;
     }
-    else if(map[2] == opponent_symbol && map[6] == opponent_symbol && map[4] == '') {
+    else if(map[2] == opponent_symbol && map[6] == opponent_symbol && map[4] == 0) {
         return 4;
     }
     else {
@@ -283,31 +283,31 @@ function computer(map, symbol, opponent_symbol) {
 
 function AI(map, symbol, opponent_symbol) {
 
-    if(map[4] == "") {
+    if(map[4] == 0) {
         return 4;
     }
-    else if(map[0] == "") {
+    else if(map[0] == 0) {
         return 0;
     }
-    else if(map[8] == "") {
+    else if(map[8] == 0) {
         return 8;
     }
-    else if(map[5] == "") {
+    else if(map[5] == 0) {
         return 5;
     }
-    else if(map[1] == "") {
+    else if(map[1] == 0) {
         return 1;
     }
-    else if(map[7] == "") {
+    else if(map[7] == 0) {
         return 7;
     }
-    else if(map[2] == "") {
+    else if(map[2] == 0) {
         return 2;
     }
-    else if(map[6] == "") {
+    else if(map[6] == 0) {
         return 6;
     }
-    else if(map[3] == "") {
+    else if(map[3] == 0) {
         return 3;
     }
 }
