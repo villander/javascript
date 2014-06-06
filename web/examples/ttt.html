@@ -12,7 +12,10 @@
  vertical-align: center;
  text-align: center;
 }
-
+.blue {
+    color: blue;
+    font-size: 24px;
+}
 .green {
     color: green;
     font-size: 24px;
@@ -26,12 +29,21 @@
  border: black;
  background-color:black;
 }
-
+#left_panel {
+    border: black solid;
+    text-align: center;
+    width: 350px;
+    float: right
+}
+#control {
+    border: black solid;
+    text-align: center;
+    width: 350px;
+}
 #lobby {
     border: black solid;
     text-align: center;
-    float : right;
-    width: 300px;
+    width: 350px;
 }
 .lobby_player {
     text-align: center;
@@ -43,23 +55,23 @@
 
 <title>Tic-Tac-Toe</title>
 <script src="../pubnub.js"></script>
+<script src="./ttt.js"></script>
 <script type="text/javascript">
-
 var pubnub = PUBNUB({
     publish_key   : "pub-c-fd1a1d00-6c07-4435-a647-495cdfcdfc95",
     subscribe_key : "sub-c-f045aeaa-befe-11e3-b6e0-02ee2ddab7fe",
-    uuid : PUBNUB.uuid(),
+    uuid : get_uid(),
     leave_on_unload : true
 });
 var current_game_count = 0;
 </script>
-<script src="./ttt.js"></script>
 <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>.
 <script type="text/javascript" language=javascript>
 
 
 
 var games = {}
+var lobby = []
 
 
 function start_handshake(uuid, turn) {
@@ -142,7 +154,12 @@ function update_turn(game_id, uuid) {
         clear_timers(game_id);
         
         if (uuid == pubnub.get_uuid()) {
-
+            if (is_auto_play()) {
+                console.log('autoplay');
+                game_step(game_id,
+                    get_next_move(game['map'], game['symbol'], (game['symbol'] == 'X')?'O':'X'));
+                return;
+            }
 
             game['timeout'] = setTimeout(function(){
                 declare_winner(game_id, (game['symbol'] == 'X')?'O':'X');
@@ -167,7 +184,13 @@ function update_result(game_id, result) {
     clear_timers(game_id);
     $("#" + game_id + " #turn").empty();
     $("#" + game_id + " #result").html('<p>' + result + '</p>');
-    $("#" + game_id + " #result").addClass((result == "You won")?"green":"red");
+    var color = "blue";
+    if (result == "You won") {
+        color = "green";
+    } else if (result == "You lost") {
+        color = "red";
+    }
+    $("#" + game_id + " #result").addClass(color);
 }
 
 function update_my_uuid(game_id, uuid) {
@@ -205,8 +228,10 @@ function declare_winner(game_id, symbol) {
     if (game) {
         if (symbol == game['symbol']) {
             winner = pubnub.get_uuid();
-        } else {
+        } else if (symbol != ''){
             winner = game['uuid'];
+        } else {
+            winner = '';
         }
         var message = {
             'mtype' : 'winner',
@@ -235,13 +260,17 @@ function handle_game_messages(message) {
             draw_grid(gid_in_message, game['symbol'] , game['map']);
 
             game['turn'] = message['turn'];
-
-            update_turn(gid_in_message, game['turn']);
             
             var winning_symbol = check_winner(game['map']);
 
             if (winning_symbol) {
                 declare_winner(gid_in_message, winning_symbol);
+            } else {
+                if (is_draw(game['map'])) {
+                    declare_winner(gid_in_message, '');
+                } else {
+                    update_turn(gid_in_message, game['turn']);
+                }
             }
         }
         
@@ -264,8 +293,8 @@ function select_cell(cell) {
 }
 
 function create_grid(game_id) {
-     $("#main").append("<tr></tr>");
-     $("#main").append(
+     $("#main").prepend("<tr></tr>");
+     $("#main").prepend(
         '<tr id=' + game_id + '>'                                                               +
             '<td>'                                                                              +
                 '<table align=center class=grid cellspacing=2>'                                 +
@@ -325,9 +354,10 @@ function end_game(game_id, winner_uuid) {
 
     if (winner_uuid == pubnub.get_uuid()) {
         update_result(game_id, "You won");
+    } else if (winner_uuid == '') {
+        update_result(game_id, "Draw");
     } else {
         update_result(game_id, "You lost");
-
     }
     delete games[game_id];
     current_game_count--;
@@ -418,11 +448,13 @@ function enter_lobby() {
 
         },
         connect : function(r) {
-            /*
+            
             pubnub.here_now({
                 'channel' : get_lobby_channel(),
                 'callback' : function(r) {
                     var uuids = r.uuids;
+
+                    /*
                     var i = getRandomInt(0,uuids.length - 1);
                     var count = 0;
                     while(uuids[i] != pubnub.get_uuid() && uuids.length > 1 && count < 4) {
@@ -430,24 +462,45 @@ function enter_lobby() {
                         count++;
                     }
                     start_handshake(uuids[i], uuids[i]);
+                    */
+                    for ( var i in uuids) {
+                        add_to_lobby(uuids[i]);
+                    }
+                    draw_lobby(lobby);
                 },
                 'error' : function (r) {
 
                 }
             });
-*/
+
             
         },
         presence : function(r) {
               /*$("#lobby table").append('<tr><td onclick="start_handshake(this.innerHTML, this.innerHTML);">'+r.uuid+'</td></tr>') */
-            /*
+            
             if (r.action == 'join' && r.uuid != pubnub.get_uuid()) {
-                start_handshake(r.uuid , r.uuid);
+                update_lobby(r.uuid);
+                //start_handshake(r.uuid , r.uuid);
             }
-            */
+            
         }
     });
 }
+
+function add_to_lobby(uuid) {
+    for (var i in lobby) {
+        if (lobby[i] == uuid) {
+            return;
+        }
+    }
+    lobby.push(uuid); 
+}
+
+function update_lobby(uuid) {
+    add_to_lobby(uuid);
+    draw_lobby(lobby);
+}
+
 
 function game_step(game_id, position) {
 
@@ -477,19 +530,27 @@ function game_step(game_id, position) {
     }
 }
 
+function draw_lobby(uuids) {
+    var arrayLength = parseInt(uuids.length);
+    $("#lobby #list").html('');
+    for (i=0; i<arrayLength; i++) {
+        if (uuids[i] != pubnub.get_uuid()) {
+            $("#lobby #list").append('<div><button style="height:20px;width:90%;margin:5px" type=button onclick="start_handshake(this.innerHTML, this.innerHTML);">'+uuids[i]+'</button></div>');
+        }
+    }
+}
+
+function clear_screen() {
+    $("#main").html('');
+}
 
 function populate_lobby() {
     get_player_list(function(r){
-            debug_log(r);
             var array = r.uuids;
-            var arrayLength = parseInt(array.length);
-            $("#lobby table").empty();
-            for (i=0; i<arrayLength; i++) {
-                if (array[i] != pubnub.get_uuid()) {
-                    //$("#lobby table").append('<tr><td><button type=button onclick="start_handshake(this.innerHTML, this.innerHTML);">'+array[i]+'</button></td></tr>');
-                    $("#lobby").append('<div><button style="height:20px;width:90%;margin:5px" type=button onclick="start_handshake(this.innerHTML, this.innerHTML);">'+array[i]+'</button></div>');
-                }
+            for (var i in array) {
+                add_to_lobby(array[i]);   
             }
+            draw_lobby(lobby);
             enter_lobby();
     })
 }
@@ -503,17 +564,25 @@ function start() {
 <body onload="start()">
 <div>
 
-<div style="float:left">
-<table id="main">
-</table>
-</div>
+    <div style="float:left">
+        <table id="main">
+        </table>
+    </div>
 
-<div id=lobby>
-<p>LOBBY</p>
-<!--
-<table>
-</table>-->
-</div>
+    <div id=left_panel>
+        <div id=control>
+            <div>
+                <button style="height:20px; width:90%;margin:5px" type=button onclick="clear_screen()">
+                    Clear Screen
+                </button>
+            </div>
+        </div>
+
+        <div id=lobby>
+            <p>LOBBY<p>
+            <div id=list></div>
+        </div>
+    </div>
 
 </div>
 
