@@ -77,6 +77,10 @@ function debug_log(message) {
     }
 }
 
+function is_display_mode() {
+    return (get_url_vars()['display']);
+}
+
 function is_uuid_in_lobby(uuid, callback, error) {
     pubnub.where_now({
         'uuid'     : uuid,

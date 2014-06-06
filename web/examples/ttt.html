@@ -294,9 +294,7 @@ function select_cell(cell) {
 
 function create_grid(game_id) {
 
-    var grid_html =         
-    '<tr id=' + game_id + '>'                                                               +
-            '<td>'                                                                              +
+    var game_table = 
                 '<table align=center class=grid cellspacing=2>'                                 +
                     '<tr>'                                                                      +
                          '<td class=square id=0 onclick="select_cell(this);"></td>'             +
@@ -313,7 +311,12 @@ function create_grid(game_id) {
                          '<td class=square id=7 onclick="select_cell(this);"></td>'             +
                          '<td class=square id=8 onclick="select_cell(this);"></td>'             +
                     '</tr>'                                                                     +
-                '</table>'                                                                      +
+                '</table>'                                                                      
+    
+    var grid_html =         
+    '<tr id=' + game_id + '>'                                                                   +
+            '<td>'                                                                              +
+                game_table                                                                      +
             '</td>'                                                                             +
             '<td>'                                                                              +
                 '<div id="game"></div>'                                                         +
@@ -326,8 +329,12 @@ function create_grid(game_id) {
         '</tr>'
 
 
-     $("#main").prepend("<tr></tr>");
-     $("#main").prepend(grid_html);
+    if (!is_display_mode()) {
+         $("#main").prepend("<tr></tr>");
+         $("#main").prepend(grid_html);
+    } else {
+
+    }
 }
 
 
