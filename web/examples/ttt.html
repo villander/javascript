@@ -84,7 +84,8 @@ var lobby = []
 var display_table_id_next = 1;
 var max_per_row_tables = 3;
 var max_total = 6;
-
+var clear_after = get_clear_after();
+var game_count = 0;
 function get_my_num(game_id) {
     return games[game_id]['num'];
 }
@@ -325,7 +326,11 @@ function select_cell(cell) {
 }
 
 function create_grid(game_id) {
-
+    game_count++;
+    if (game_count % clear_after == 0) {
+        game_count = 0;
+        $("#table_row").empty();
+    }
     var game_table = 
                 '<table id=tbl-' + game_id + ' align=center class=grid cellspacing=2>'          +
                     '<tr>'                                                                      +
@@ -366,15 +371,8 @@ function create_grid(game_id) {
          $("#main").prepend(grid_html);
     } else {
 
-        if (display_table_id_next < max_total) {
-            $("#table_row").prepend("<div class=table_div></div>");
-            $("#table_row div:first").append(game_table);
-            
-
-        }
-
-
-        display_table_id_next = (display_table_id_next == max_total)?1:display_table_id_next++;
+        $("#table_row").prepend("<div class=table_div></div>");
+        $("#table_row div:first").append(game_table);
     }
 }
 
@@ -415,6 +413,10 @@ function end_game(game_id, winner_uuid) {
     }
     delete games[game_id];
     current_game_count--;
+    if (is_auto_join()) {
+        var i = getRandomInt(0, lobby.length - 1);
+        start_handshake(lobby[i], lobby[i]);
+    }
 }
 
 function enter_lobby() {
@@ -501,13 +503,17 @@ function enter_lobby() {
 
         },
         connect : function(r) {
+            if (is_auto_join()) {
+                var i = getRandomInt(0, lobby.length - 1);
+                start_handshake(lobby[i], lobby[i]);
+            }
             /*
             pubnub.here_now({
                 'channel' : get_lobby_channel(),
                 'callback' : function(r) {
                     var uuids = r.uuids;
 
-                    /
+                    
                     var i = getRandomInt(0,uuids.length - 1);
                     var count = 0;
                     while(uuids[i] != pubnub.get_uuid() && uuids.length > 1 && count < 4) {
@@ -515,7 +521,7 @@ function enter_lobby() {
                         count++;
                     }
                     start_handshake(uuids[i], uuids[i]);
-                    /
+                    
                     lobby = []
                     for ( var i in uuids) {
                         add_to_lobby(uuids[i]);

@@ -63,6 +63,13 @@ function is_auto_play() {
     return ((get_url_vars()['autoplay'])?true:false);
 }
 
+function get_clear_after() {
+    var c = get_url_vars()['get_clear_after'];
+    return (c)?c:90;
+}
+function is_auto_join() {
+    return ((get_url_vars()['autojoin'])?true:false);
+}
 function get_max_concurrent() {
     return (get_url_vars()['max'] || 3);
 }
