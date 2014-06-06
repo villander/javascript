@@ -27,6 +27,18 @@
  background-color:black;
 }
 
+#lobby {
+    border: black solid;
+    text-align: center;
+    float : right;
+    width: 300px;
+}
+.lobby_player {
+    text-align: center;
+    border: outset;
+    width: inherit;
+}
+
 </style>
 
 <title>Tic-Tac-Toe</title>
@@ -39,7 +51,7 @@ var pubnub = PUBNUB({
     uuid : PUBNUB.uuid(),
     leave_on_unload : true
 });
-
+var current_game_count = 0;
 </script>
 <script src="./ttt.js"></script>
 <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>.
@@ -113,8 +125,8 @@ function clear_timers(game_id) {
     }
 }
 
-function update_time_remaining(n) {
-    $("#time").html('<p>'+n+' sec remaining</p>');
+function update_time_remaining(game_id, n) {
+    $("#" + game_id + " #time").html('<p>' + n + ' sec remaining</p>');
 }
 
 function update_turn(game_id, uuid) {
@@ -130,14 +142,16 @@ function update_turn(game_id, uuid) {
         clear_timers(game_id);
         
         if (uuid == pubnub.get_uuid()) {
+
+
             game['timeout'] = setTimeout(function(){
-                update_result('You lost');
-                declare_winner((game['symbol'] == 'X')?'O':'X');
+                declare_winner(game_id, (game['symbol'] == 'X')?'O':'X');
+                //end_game(game_id, game['uuid']);
                 clear_timers(game_id);
-                $("#" + game_id + " #time").html('');
             }, 30000)
+
             game['interval'] = setInterval(function() {
-                update_time_remaining(game['time_remaining']);
+                update_time_remaining(game_id, game['time_remaining']);
                 game['time_remaining']--;
             }, 1000);
 
@@ -301,9 +315,12 @@ function create_game(game_id, opponent_uuid, my_symbol, turn_uuid) {
     update_my_uuid(game_id, pubnub.get_uuid());
     update_game_status(game_id, 'Game Started');
     update_turn(game_id, turn_uuid);
+    current_game_count++;
 }
 
 function end_game(game_id, winner_uuid) {
+
+    $("#" + game_id + " #time").html('');
     update_game_status(game_id, 'finished');
 
     if (winner_uuid == pubnub.get_uuid()) {
@@ -313,6 +330,7 @@ function end_game(game_id, winner_uuid) {
 
     }
     delete games[game_id];
+    current_game_count--;
 }
 
 function enter_lobby() {
@@ -327,7 +345,7 @@ function enter_lobby() {
                 r['p2_uuid'] == pubnub.get_uuid())) {
 
                     // handle handshakes
-                    if (r['mtype'] == 'handshake') {
+                    if (r['mtype'] == 'handshake' && current_game_count < get_max_concurrent()) {
                         switch(r['step']) {
 
                             case 1: // some one has asked us to play
@@ -468,7 +486,8 @@ function populate_lobby() {
             $("#lobby table").empty();
             for (i=0; i<arrayLength; i++) {
                 if (array[i] != pubnub.get_uuid()) {
-                    $("#lobby table").append('<tr><td onclick="start_handshake(this.innerHTML, this.innerHTML);">'+array[i]+'</td></tr>');
+                    //$("#lobby table").append('<tr><td><button type=button onclick="start_handshake(this.innerHTML, this.innerHTML);">'+array[i]+'</button></td></tr>');
+                    $("#lobby").append('<div><button style="height:20px;width:90%;margin:5px" type=button onclick="start_handshake(this.innerHTML, this.innerHTML);">'+array[i]+'</button></div>');
                 }
             }
             enter_lobby();
@@ -482,11 +501,22 @@ function start() {
 
 </head>
 <body onload="start()">
+<div>
+
+<div style="float:left">
 <table id="main">
 </table>
-<div id=lobby>
-<table>
-</table>
 </div>
+
+<div id=lobby>
+<p>LOBBY</p>
+<!--
+<table>
+</table>-->
+</div>
+
+</div>
+
+
 </body>
 </html>

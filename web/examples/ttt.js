@@ -55,6 +55,10 @@ function is_auto_play() {
     return ((get_url_vars()['autoplay'])?true:false);
 }
 
+function get_max_concurrent() {
+    return (get_url_vars()['max'] || 3);
+}
+
 function is_debug() {
     return ((get_url_vars()['debug'])?true:false);
 }
@@ -88,4 +92,16 @@ function get_player_list(callback){
         'channel' : get_lobby_channel(),
         'callback' : callback
     })
+}
+
+function get_next_move(map, turn_id, opponent_started) {
+    var moves = {
+        0 : {
+
+        },
+        1 : {
+
+        }
+
+    };
 }
