@@ -50,6 +50,15 @@
     border: outset;
     width: inherit;
 }
+.table_row {
+    float : left;
+    width: 100%;
+}
+.table_div {
+    float : left;
+    width: 30%;
+    padding: 10px;
+}
 
 </style>
 
@@ -72,6 +81,9 @@ var current_game_count = 0;
 
 var games = {}
 var lobby = []
+var display_table_id_next = 1;
+var max_per_row_tables = 3;
+var max_total = 6;
 
 function get_my_num(game_id) {
     return games[game_id]['num'];
@@ -142,7 +154,7 @@ function clear_timers(game_id) {
     if (game) {
         clearInterval(game['interval']);
         clearTimeout(game['timeout']);
-        game['time_remaining'] = 30;
+        game['time_remaining'] = 60;
     }
 }
 
@@ -174,7 +186,7 @@ function update_turn(game_id, uuid) {
                 declare_winner(game_id, get_opponent_num(game_id));
                 //end_game(game_id, game['uuid']);
                 clear_timers(game_id);
-            }, 30000)
+            }, 60000)
 
             game['interval'] = setInterval(function() {
                 update_time_remaining(game_id, game['time_remaining']);
@@ -227,14 +239,14 @@ function update_game_status(game_id, status) {
 
 function draw_grid(game_id, symbol, map) {
     for (var i in map) {
-        $("#" + game_id + " #" + i).html(get_print_symbol(game_id, map[i]));
+        $("#tbl-" + game_id + " #" + i).html(get_print_symbol(game_id, map[i]));
         
         if (symbol == map[i]) {
-            $("#" + game_id + " #" + i).removeClass("red");
-            $("#" + game_id + " #" + i).addClass("green");
+            $("#tbl-" + game_id + " #" + i).removeClass("red");
+            $("#tbl-" + game_id + " #" + i).addClass("green");
         } else {
-            $("#" + game_id + " #" + i).removeClass("green");
-            $("#" + game_id + " #" + i).addClass("red");
+            $("#tbl-" + game_id + " #" + i).removeClass("green");
+            $("#tbl-" + game_id + " #" + i).addClass("red");
         }
     }
 }
@@ -315,7 +327,7 @@ function select_cell(cell) {
 function create_grid(game_id) {
 
     var game_table = 
-                '<table align=center class=grid cellspacing=2>'                                 +
+                '<table id=tbl-' + game_id + ' align=center class=grid cellspacing=2>'          +
                     '<tr>'                                                                      +
                          '<td class=square id=0 onclick="select_cell(this);"></td>'             +
                          '<td class=square id=1 onclick="select_cell(this);"></td>'             +
@@ -331,7 +343,7 @@ function create_grid(game_id) {
                          '<td class=square id=7 onclick="select_cell(this);"></td>'             +
                          '<td class=square id=8 onclick="select_cell(this);"></td>'             +
                     '</tr>'                                                                     +
-                '</table>'                                                                      
+                '</table>'  ;                                                                  
     
     var grid_html =         
     '<tr id=' + game_id + '>'                                                                   +
@@ -346,7 +358,7 @@ function create_grid(game_id) {
                 '<div id="time"></div>'                                                         +
                 '<div id="result"></div>'                                                       +
             '</td>'                                                                             +
-        '</tr>'
+        '</tr>'   ;
 
 
     if (!is_display_mode()) {
@@ -354,6 +366,15 @@ function create_grid(game_id) {
          $("#main").prepend(grid_html);
     } else {
 
+        if (display_table_id_next < max_total) {
+            $("#table_row").prepend("<div class=table_div></div>");
+            $("#table_row div:first").append(game_table);
+            
+
+        }
+
+
+        display_table_id_next = (display_table_id_next == max_total)?1:display_table_id_next++;
     }
 }
 
@@ -366,7 +387,7 @@ function create_game(game_id, opponent_uuid, my_symbol, turn_uuid, num, opponent
         'turn'              : turn_uuid,
         'timeout'           : null,
         'interval'          : null,
-        'time_remaining'    : 30,
+        'time_remaining'    : 60,
         'num'               : num,
         'opponent_symbol'   : opponent_symbol
     };
@@ -600,14 +621,20 @@ function populate_lobby() {
     })
 }
 function start() {
-    populate_lobby();
+    if (is_display_mode()) {
+        $("#display_off").remove();
+        enter_lobby(); 
+    } else {
+        $("#display_on").remove();
+        populate_lobby();
+    }
 }
 
 </script>
 
 </head>
 <body onload="start()">
-<div>
+<div id=display_off>
 
     <div style="float:left">
         <table id="main">
@@ -629,6 +656,10 @@ function start() {
         </div>
     </div>
 
+</div>
+<div id=display_on>
+    <div id=table_row class=row>
+    </div>
 </div>
 
 
