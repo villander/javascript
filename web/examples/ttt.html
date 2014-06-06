@@ -480,13 +480,13 @@ function enter_lobby() {
 
         },
         connect : function(r) {
-            
+            /*
             pubnub.here_now({
                 'channel' : get_lobby_channel(),
                 'callback' : function(r) {
                     var uuids = r.uuids;
 
-                    /*
+                    /
                     var i = getRandomInt(0,uuids.length - 1);
                     var count = 0;
                     while(uuids[i] != pubnub.get_uuid() && uuids.length > 1 && count < 4) {
@@ -494,7 +494,8 @@ function enter_lobby() {
                         count++;
                     }
                     start_handshake(uuids[i], uuids[i]);
-                    */
+                    /
+                    lobby = []
                     for ( var i in uuids) {
                         add_to_lobby(uuids[i]);
                     }
@@ -504,6 +505,7 @@ function enter_lobby() {
 
                 }
             });
+            */
 
             
         },
@@ -512,6 +514,16 @@ function enter_lobby() {
             
             if (r.action == 'join' && r.uuid != pubnub.get_uuid()) {
                 update_lobby(r.uuid);
+                //start_handshake(r.uuid , r.uuid);
+            }
+            if ((r.action == 'leave' || r.action == 'timeout') && r.uuid != pubnub.get_uuid()) {
+                for ( var i in lobby) {
+                    if (r.uuid == lobby[i]) {
+                        lobby[i] = 0;
+                        draw_lobby(lobby);
+                    }
+                }
+                
                 //start_handshake(r.uuid , r.uuid);
             }
             
@@ -567,7 +579,7 @@ function draw_lobby(uuids) {
     var arrayLength = parseInt(uuids.length);
     $("#lobby #list").html('');
     for (i=0; i<arrayLength; i++) {
-        if (uuids[i] != pubnub.get_uuid()) {
+        if (uuids[i] != pubnub.get_uuid() && uuids[i] != 0) {
             $("#lobby #list").append('<div><button style="height:20px;width:90%;margin:5px" type=button onclick="start_handshake(this.innerHTML, this.innerHTML);">'+uuids[i]+'</button></div>');
         }
     }
