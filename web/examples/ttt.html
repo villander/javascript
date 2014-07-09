@@ -95,6 +95,7 @@ function get_opponent_num(game_id) {
 }
 
 function start_handshake(uuid, turn) {
+    if (current_game_count >= get_max_concurrent()) return;
     var message = {
         'game' : 'tictactoe',
         'mtype' : 'handshake',
@@ -103,15 +104,15 @@ function start_handshake(uuid, turn) {
         'p2_uuid' : uuid,
         'turn' : turn
     };
-    debug_log('HANDSHAKE 1 : ' + JSON.stringify(message));
     pubnub.publish({
         'channel' : get_lobby_channel(),
         'message' : message,
-        'callback' : function(r) {debug_log(r)},
+        'callback' : function(r) {debug_log('HANDSHAKE 1 SENT : ' + JSON.stringify(message));},
         'error' : function(r) {debug_log(r)}  
     });
 }
 function start_handshake_2(uuid, turn) {
+    if (current_game_count >= get_max_concurrent()) return;
     var message = {
         'game' : 'tictactoe',
         'mtype' : 'handshake',
@@ -122,11 +123,10 @@ function start_handshake_2(uuid, turn) {
         'game_id' : getRandomInt(1,10000000000),
         'symbol' : get_symbol(2)
     };
-    debug_log('HANDSHAKE 2 : ' + JSON.stringify(message));
     pubnub.publish({
         'channel' : get_lobby_channel(),
         'message' : message,
-        'callback' : function(r) {debug_log(r)},
+        'callback' : function(r) {debug_log('HANDSHAKE 2 SENT : ' + JSON.stringify(message));},
         'error' : function(r) {debug_log(r)}   
     });
 }
@@ -141,21 +141,20 @@ function start_handshake_3(uuid, turn, game_id) {
         'game_id' : game_id,
         'symbol' : get_symbol(1)
     };
-    debug_log('HANDSHAKE 3 : ' + JSON.stringify(message));
     pubnub.publish({
         'channel' : get_lobby_channel(),
         'message' : message,
-        'callback' : function(r) {debug_log(r)},
+        'callback' : function(r) {debug_log('HANDSHAKE 3 SENT : ' + JSON.stringify(message));},
         'error' : function(r) {debug_log(r)}  
     });
 }
 
-function clear_timers(game_id) {
+function clear_timers(game_id, time_remaining) {
     var game = games[game_id];
     if (game) {
         clearInterval(game['interval']);
         clearTimeout(game['timeout']);
-        game['time_remaining'] = 60;
+        game['time_remaining'] = (time_remaining != 'undefined')?time_remaining:60;
     }
 }
 
@@ -177,7 +176,6 @@ function update_turn(game_id, uuid) {
         
         if (uuid == pubnub.get_uuid()) {
             if (is_auto_play()) {
-                console.log('autoplay');
                 game_step(game_id,
                     get_next_move(game['map'], get_my_num(game_id), get_opponent_num(game_id)));
                 return;
@@ -274,7 +272,7 @@ function declare_winner(game_id, symbol) {
         pubnub.publish({
             'channel' : game_id,
             'message' : message,
-            'callback' : function(r){debug_log(JSON.stringify(r))},
+            'callback' : function(r){'DECLARED WINNER : ' + debug_log(JSON.stringify(message))},
             'error' : function(r){debug_log(JSON.stringify(r))}
         })
     }
@@ -286,7 +284,7 @@ function handle_game_messages(message) {
 
         var gid_in_message = message['game_id'];
         var game = games[gid_in_message];
-
+        debug_log('RECEIVED GAME MESSAGE [' + gid_in_message + '] : ' + JSON.stringify(message));
         if (game) {
             game['map'] = message['map'];
 
@@ -422,6 +420,7 @@ function end_game(game_id, winner_uuid) {
 
 function enter_lobby() {
     pubnub.subscribe({
+        'restore' : true,
         'channel' : get_lobby_channel(),
         'callback' : function(r) {
 
@@ -430,9 +429,9 @@ function enter_lobby() {
             if (r['game'] == 'tictactoe' && 
                 (r['p1_uuid'] == pubnub.get_uuid() || 
                 r['p2_uuid'] == pubnub.get_uuid())) {
-
+                    debug_log('HANDSHAKE ' + r['step'] + ' RECEIVED : ' + JSON.stringify(r));
                     // handle handshakes
-                    if (r['mtype'] == 'handshake' && current_game_count < get_max_concurrent()) {
+                    if (r['mtype'] == 'handshake') {
                         switch(r['step']) {
 
                             case 1: // some one has asked us to play
@@ -506,7 +505,7 @@ function enter_lobby() {
         connect : function(r) {
             if (is_auto_join()) {
                 var i = getRandomInt(0, lobby.length - 1);
-                start_handshake(lobby[i], lobby[i]);
+                if (lobby[i] && lobby[i] != pubnub.get_uuid()) start_handshake(lobby[i], lobby[i]);
             }
             /*
             pubnub.here_now({
@@ -596,7 +595,7 @@ function game_step(game_id, position) {
             pubnub.publish({
                 'channel' : game_id,
                 'message' : message,
-                'callback' : function(r){try {game['map'][position] = get_my_num(game_id);} catch (e) {}debug_log(JSON.stringify(r))},
+                'callback' : function(r){try {game['map'][position] = get_my_num(game_id);} catch (e) {}debug_log('SENT GAME STEP ['+ game_id +'] : ' + JSON.stringify(message))},
                 'error' : function(r){debug_log(JSON.stringify(r))}
             })
         }
@@ -638,6 +637,7 @@ function start() {
     $("#lobby_name").val(get_lobby_channel());
     $("#uid").val(get_uid());
     $("#label").val(get_symbol());
+    $("#clear_after").val(get_clear_after());
     $("#max").val(get_max_concurrent());
     $("#display_mode").checked = is_display_mode();
     $("#auto_play").prop('checked', is_auto_play());
@@ -652,7 +652,7 @@ function start() {
     }
 
     setInterval(function() {
-        debug_log(Date.now() + ' : No. of games in progress : ' + Object.size(games));
+       debug_log('No. of games in progress : ' + Object.size(games));
     }, 5000);
 }
 
@@ -665,6 +665,7 @@ function reload_game() {
     symbol = $("#label").val() || get_symbol();
     lobby = $("#lobby_name").val() || get_lobby_channel();
     max = $("#max").val() || get_max_concurrent();
+    clearafter = $("#clear_after").val() || get_clear_after();
 
     url = url.split("?")[0];
     url += "?";
@@ -687,6 +688,10 @@ function reload_game() {
 
     url += '&symbol='
     url += symbol;
+
+    url += '&clearafter='
+    url += clearafter;
+
 
     window.location.href = url;
 }
@@ -728,6 +733,12 @@ function reload_game() {
                     <td>Max Concurrent Games</td>
                     <td>
                       <input type="text" id="max" size="35" value=1>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Clear After</td>
+                    <td>
+                      <input type="text" id="clear_after" size="35" value=12>
                     </td>
                   </tr>
                   <tr>

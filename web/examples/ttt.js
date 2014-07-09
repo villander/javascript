@@ -65,8 +65,8 @@ function is_auto_play() {
 }
 
 function get_clear_after() {
-    var c = get_url_vars()['get_clear_after'];
-    return (c)?c:90;
+    var c = get_url_vars()['clearafter'];
+    return (c)?c:12;
 }
 function is_auto_join() {
     var v = get_url_vars()['autojoin'];
