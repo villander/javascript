@@ -288,8 +288,8 @@ function computer(map, symbol, opponent_symbol, game_id) {
         return 4;
     }
     else {
-        return AI1(map, symbol, opponent_symbol);
-        /*
+        //return AI1(map, symbol, opponent_symbol);
+        
         if (game_id % 5 == 0)
             return AI5(map, symbol, opponent_symbol);
         else if (game_id % 3 == 0)
@@ -298,7 +298,7 @@ function computer(map, symbol, opponent_symbol, game_id) {
             return AI2(map, symbol, opponent_symbol);
         else 
             return AI1(map, symbol, opponent_symbol);
-        */
+        
     }
 }
 
