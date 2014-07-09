@@ -450,6 +450,7 @@ function enter_lobby() {
                                     
                                     // create a private channel to play the game.
                                     pubnub.subscribe({
+                                        'restore' : true,
                                         'channel' : r['game_id'],
                                         'callback' : function(r1) {
                                             handle_game_messages(r1);
@@ -479,6 +480,7 @@ function enter_lobby() {
                                     //pubnub.unsubscribe({channel : get_lobby_channel()});
 
                                     pubnub.subscribe({
+                                        'restore' : true,
                                         'channel' : r['game_id'],
                                         'callback' : function(r1) {
                                             handle_game_messages(r1);
