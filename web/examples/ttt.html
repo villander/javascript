@@ -103,7 +103,7 @@ function start_handshake(uuid, turn) {
         'p2_uuid' : uuid,
         'turn' : turn
     };
-
+    debug_log('HANDSHAKE 1 : ' + JSON.stringify(message));
     pubnub.publish({
         'channel' : get_lobby_channel(),
         'message' : message,
@@ -122,7 +122,7 @@ function start_handshake_2(uuid, turn) {
         'game_id' : getRandomInt(1,10000000000),
         'symbol' : get_symbol(2)
     };
-
+    debug_log('HANDSHAKE 2 : ' + JSON.stringify(message));
     pubnub.publish({
         'channel' : get_lobby_channel(),
         'message' : message,
@@ -141,7 +141,7 @@ function start_handshake_3(uuid, turn, game_id) {
         'game_id' : game_id,
         'symbol' : get_symbol(1)
     };
-
+    debug_log('HANDSHAKE 3 : ' + JSON.stringify(message));
     pubnub.publish({
         'channel' : get_lobby_channel(),
         'message' : message,
@@ -389,7 +389,7 @@ function create_game(game_id, opponent_uuid, my_symbol, turn_uuid, num, opponent
         'num'               : num,
         'opponent_symbol'   : opponent_symbol
     };
-    console.log(JSON.stringify(games[game_id]));
+    debug_log('CREATING GAME : [' + game_id + ']' + JSON.stringify(games[game_id]));
     create_grid(game_id);
     update_opponent(game_id, opponent_uuid);
     update_my_uuid(game_id, pubnub.get_uuid());
@@ -411,6 +411,7 @@ function end_game(game_id, winner_uuid) {
     } else {
         update_result(game_id, "You lost");
     }
+    debug_log('END GAME : [' + game_id + ']' + JSON.stringify(games[game_id]));
     delete games[game_id];
     current_game_count--;
     if (is_auto_join()) {
@@ -626,7 +627,22 @@ function populate_lobby() {
             enter_lobby();
     })
 }
+Object.size = function(obj) {
+    var size = 0, key;
+    for (key in obj) {
+        if (obj.hasOwnProperty(key)) size++;
+    }
+    return size;
+};
 function start() {
+    $("#lobby_name").val(get_lobby_channel());
+    $("#uid").val(get_uid());
+    $("#label").val(get_symbol());
+    $("#max").val(get_max_concurrent());
+    $("#display_mode").checked = is_display_mode();
+    $("#auto_play").prop('checked', is_auto_play());
+    $("#auto_join").prop('checked', is_auto_join());
+
     if (is_display_mode()) {
         $("#display_off").remove();
         enter_lobby(); 
@@ -634,6 +650,45 @@ function start() {
         $("#display_on").remove();
         populate_lobby();
     }
+
+    setInterval(function() {
+        debug_log(Date.now() + ' : No. of games in progress : ' + Object.size(games));
+    }, 5000);
+}
+
+function reload_game() {
+    var url = window.location.href;    
+    display_mode = $("#display_mode").prop('checked');
+    auto_join = $("#auto_join").prop('checked');
+    auto_play = $("#auto_play").prop('checked');
+    uid = $("#uid").val() || get_uid();
+    symbol = $("#label").val() || get_symbol();
+    lobby = $("#lobby_name").val() || get_lobby_channel();
+    max = $("#max").val() || get_max_concurrent();
+
+    url = url.split("?")[0];
+    url += "?";
+
+    url += 'lobby='
+    url += lobby;
+
+    url += '&autoplay=';
+    url += auto_play;
+
+
+    url += '&display=';
+    url += display_mode;
+
+    url += '&autojoin=';
+    url += auto_join;
+
+    url += '&max=';
+    url += max;
+
+    url += '&symbol='
+    url += symbol;
+
+    window.location.href = url;
 }
 
 </script>
@@ -650,6 +705,49 @@ function start() {
     <div id=left_panel>
         <div id=control>
             <div>
+            <table style="margin:15px">
+                  <tr>
+                    <td>Lobby Name</td>
+                    <td>
+                      <input type="text" id="lobby_name" size="35">
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>UID</td>
+                    <td>
+                      <input type="text" id="uid" size="35">
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Label</td>
+                    <td>
+                      <input type="text" id="label" size="35">
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Max Concurrent Games</td>
+                    <td>
+                      <input type="text" id="max" size="35" value=1>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Auto Play ?</td>
+                    <td><input type="checkbox" id="auto_play" ></td>
+                  </tr>
+                  <tr>
+                    <td>Auto Join ?</td>
+                    <td><input type="checkbox" id="auto_join" ></td>
+                  </tr>
+                  <tr>
+                    <td>Display Mode ?</td>
+                    <td><input type="checkbox" id="display_mode" ></td>
+                  </tr>
+                </table>
+
+                <button style="height:20px; width:90%;margin:5px" type=button onclick="reload_game()">
+                    Reload
+                </button>
+
                 <button style="height:20px; width:90%;margin:5px" type=button onclick="clear_screen()">
                     Clear Screen
                 </button>

@@ -60,7 +60,8 @@ function get_lobby_channel() {
 
 
 function is_auto_play() {
-    return ((get_url_vars()['autoplay'])?true:false);
+    var v = get_url_vars()['autoplay'];
+    return (v)?JSON.parse(v):false;
 }
 
 function get_clear_after() {
@@ -68,14 +69,16 @@ function get_clear_after() {
     return (c)?c:90;
 }
 function is_auto_join() {
-    return ((get_url_vars()['autojoin'])?true:false);
+    var v = get_url_vars()['autojoin'];
+    return (v)?JSON.parse(v):false;
 }
 function get_max_concurrent() {
     return (get_url_vars()['max'] || 3);
 }
 
 function is_debug() {
-    return ((get_url_vars()['debug'])?true:false);
+    var v = get_url_vars()['debug'];
+    return (v)?JSON.parse(v):false;
 }
 
 function debug_log(message) {
@@ -85,7 +88,8 @@ function debug_log(message) {
 }
 
 function is_display_mode() {
-    return (get_url_vars()['display']);
+    var v = get_url_vars()['display'];
+    return (v)?JSON.parse(v):false;
 }
 
 function is_uuid_in_lobby(uuid, callback, error) {
@@ -119,11 +123,11 @@ function get_player_list(callback){
     })
 }
 
-function get_next_move(map, symbol, opponent_symbol) {
-    return winCheck(map, symbol, opponent_symbol);
+function get_next_move(map, symbol, opponent_symbol, game_id) {
+    return winCheck(map, symbol, opponent_symbol, game_id);
 }
 
-function winCheck(map, symbol, opponent_symbol) {
+function winCheck(map, symbol, opponent_symbol, game_id) {
     
     if(map[0] == symbol && map[1] == symbol && map[2] == 0) {
         return 2;
@@ -201,12 +205,12 @@ function winCheck(map, symbol, opponent_symbol) {
         return 4;
     }
     else {
-        return computer(map, symbol, opponent_symbol);
+        return computer(map, symbol, opponent_symbol, game_id);
     }
 }
 
 
-function computer(map, symbol, opponent_symbol) {
+function computer(map, symbol, opponent_symbol, game_id) {
 
     if(map[0] == opponent_symbol && map[1] == opponent_symbol && map[2] == 0) {
         return 2;
@@ -284,11 +288,22 @@ function computer(map, symbol, opponent_symbol) {
         return 4;
     }
     else {
-        return AI(map, symbol, opponent_symbol);
+        return AI1(map, symbol, opponent_symbol);
+        /*
+        if (game_id % 5 == 0)
+            return AI5(map, symbol, opponent_symbol);
+        else if (game_id % 3 == 0)
+            return AI3(map, symbol, opponent_symbol);
+        else if (game_id % 2 == 0)
+            return AI2(map, symbol, opponent_symbol);
+        else 
+            return AI1(map, symbol, opponent_symbol);
+        */
     }
 }
 
-function AI(map, symbol, opponent_symbol) {
+function AI1(map, symbol, opponent_symbol) {
+
 
     if(map[4] == 0) {
         return 4;
@@ -318,4 +333,99 @@ function AI(map, symbol, opponent_symbol) {
         return 3;
     }
 }
+
+function AI2(map, symbol, opponent_symbol) {
+
+    if(map[0] == 0) {
+        return 0;
+    }
+    else if(map[8] == 0) {
+        return 8;
+    }
+    else if(map[4] == 0) {
+        return 4;
+    }
+    else if(map[1] == 0) {
+        return 1;
+    }
+    else if(map[5] == 0) {
+        return 5;
+    }
+    else if(map[2] == 0) {
+        return 2;
+    }
+    else if(map[7] == 0) {
+        return 7;
+    }
+    else if(map[3] == 0) {
+        return 3;
+    }
+    else if(map[6] == 0) {
+        return 6;
+    }
+}
+
+function AI3(map, symbol, opponent_symbol) {
+
+    if(map[4] == 0) {
+        return 4;
+    }
+    else if(map[2] == 0) {
+        return 2;
+    }
+    else if(map[7] == 0) {
+        return 7;
+    }
+    else if(map[3] == 0) {
+        return 3;
+    }
+    else if(map[6] == 0) {
+        return 6;
+    }
+    else if(map[8] == 0) {
+        return 8;
+    }
+    else if(map[0] == 0) {
+        return 0;
+    }
+    else if(map[1] == 0) {
+        return 1;
+    }
+    else if(map[5] == 0) {
+        return 5;
+    }
+}
+
+
+function AI5(map, symbol, opponent_symbol) {
+
+    if(map[5] == 0) {
+        return 5;
+    }
+    else if(map[2] == 0) {
+        return 2;
+    }
+    else if(map[7] == 0) {
+        return 7;
+    }
+    else if(map[0] == 0) {
+        return 0;
+    }
+    else if(map[6] == 0) {
+        return 6;
+    }
+    else if(map[8] == 0) {
+        return 8;
+    }
+    else if(map[3] == 0) {
+        return 3;
+    }
+    else if(map[1] == 0) {
+        return 1;
+    }
+    else if(map[4] == 0) {
+        return 4;
+    }
+}
+
 
