@@ -984,7 +984,8 @@ function start() {
 
     setInterval(function() {
        debug_log('No. of games in progress : ' + Object.size(games) + ', Game Count = ' + game_count + ', Games completed = ' + games_completed);
-    }, 5000);
+       debug_log('RUNNING GAMES : ' + JSON.stringify(games));
+    }, 5000); 
 }
 
 start();
