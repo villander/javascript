@@ -78,7 +78,7 @@ var current_game_count = 0;
 <script type="text/javascript" language=javascript>
 
 
-
+var message_count = 0;
 var games = {}
 var lobby = []
 var display_table_id_next = 1;
@@ -104,12 +104,18 @@ function start_handshake(uuid, turn) {
         'p2_uuid' : uuid,
         'turn' : turn
     };
-    pubnub.publish({
-        'channel' : get_lobby_channel(),
-        'message' : message,
-        'callback' : function(r) {debug_log('HANDSHAKE 1 SENT : ' + JSON.stringify(message));},
-        'error' : function(r) {debug_log(r)}  
-    });
+    message['sender'] = pubnub.get_uuid();
+    message['id'] = ++message_count; 
+
+    function p(m) {
+        pubnub.publish({
+            'channel' : get_lobby_channel(),
+            'message' : message,
+            'callback' : function(r){debug_log('HANDSHAKE 1 SENT : ' + JSON.stringify(message));},
+            'error' : function(r){debug_log('ERROR in publish ' + JSON.stringify(r) + ', ' + JSON.stringify(message)); p(m);}
+        })
+    }
+    p(message);
 }
 function start_handshake_2(uuid, turn) {
     if (current_game_count >= get_max_concurrent()) return;
@@ -123,12 +129,17 @@ function start_handshake_2(uuid, turn) {
         'game_id' : getRandomInt(1,10000000000),
         'symbol' : get_symbol(2)
     };
-    pubnub.publish({
-        'channel' : get_lobby_channel(),
-        'message' : message,
-        'callback' : function(r) {debug_log('HANDSHAKE 2 SENT : ' + JSON.stringify(message));},
-        'error' : function(r) {debug_log(r)}   
-    });
+    message['sender'] = pubnub.get_uuid();
+    message['id'] = ++message_count; 
+    function p(m) {
+        pubnub.publish({
+            'channel' : get_lobby_channel(),
+            'message' : message,
+            'callback' : function(r){debug_log('HANDSHAKE 2 SENT : ' + JSON.stringify(message));},
+            'error' : function(r){debug_log('ERROR in publish ' + JSON.stringify(r) + ', ' + JSON.stringify(message)); p(m);}
+        })
+    }
+    p(message);
 }
 function start_handshake_3(uuid, turn, game_id) {
     var message = {
@@ -141,12 +152,18 @@ function start_handshake_3(uuid, turn, game_id) {
         'game_id' : game_id,
         'symbol' : get_symbol(1)
     };
-    pubnub.publish({
-        'channel' : get_lobby_channel(),
-        'message' : message,
-        'callback' : function(r) {debug_log('HANDSHAKE 3 SENT : ' + JSON.stringify(message));},
-        'error' : function(r) {debug_log(r)}  
-    });
+    message['sender'] = pubnub.get_uuid();
+    message['id'] = ++message_count; 
+
+    function p(m) {
+        pubnub.publish({
+            'channel' : get_lobby_channel(),
+            'message' : message,
+            'callback' : function(r){debug_log('HANDSHAKE 3 SENT : ' + JSON.stringify(message));},
+            'error' : function(r){debug_log('ERROR in publish ' + JSON.stringify(r) + ', ' + JSON.stringify(message)); p(m);}
+        })
+    }
+    p(message);
 }
 
 function clear_timers(game_id, time_remaining) {
@@ -269,12 +286,17 @@ function declare_winner(game_id, symbol) {
             'game_id' : game_id,
             'winner' : winner
         }
-        pubnub.publish({
-            'channel' : game_id,
-            'message' : message,
-            'callback' : function(r){'DECLARED WINNER : ' + debug_log(JSON.stringify(message))},
-            'error' : function(r){debug_log(JSON.stringify(r))}
-        })
+        message['sender'] = pubnub.get_uuid();
+        message['id'] = ++message_count;
+        function p(m) {
+            pubnub.publish({
+                'channel' : game_id,
+                'message' : message,
+                'callback' : function(r){'DECLARED WINNER : ' + debug_log(JSON.stringify(message))},
+                'error' : function(r){debug_log('ERROR in publish ' + JSON.stringify(r) + ', ' + JSON.stringify(message)); p(m);}
+            })
+        }
+        p(message);
     }
 }
 
@@ -594,12 +616,18 @@ function game_step(game_id, position) {
                 'map' : m,
                 'turn' : game['uuid']
             }
-            pubnub.publish({
-                'channel' : game_id,
-                'message' : message,
-                'callback' : function(r){try {game['map'][position] = get_my_num(game_id);} catch (e) {}debug_log('SENT GAME STEP ['+ game_id +'] : ' + JSON.stringify(message))},
-                'error' : function(r){debug_log(JSON.stringify(r))}
-            })
+            message['sender'] = pubnub.get_uuid();
+            message['id'] = ++message_count; 
+
+            function p(m) {
+                pubnub.publish({
+                    'channel' : game_id,
+                    'message' : message,
+                    'callback' : function(r){try {game['map'][position] = get_my_num(game_id);} catch (e) {}debug_log('SENT GAME STEP ['+ game_id +'] : ' + JSON.stringify(message))},
+                    'error' : function(r){debug_log('ERROR in publish ' + JSON.stringify(r) + ', ' + JSON.stringify(message)); p(m);}
+                })
+            }
+            p(message);
         }
     }
 }
