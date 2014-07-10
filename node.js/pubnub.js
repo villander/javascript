@@ -1485,6 +1485,7 @@ function error(message) { console['error'](message) }
 function xdr( setup ) {
     var request
     ,   response
+    ,   url1
     ,   success  = setup.success || function(){}
     ,   fail     = setup.fail    || function(){}
     ,   origin   = setup.origin || 'pubsub.pubnub.com'
@@ -1501,6 +1502,7 @@ function xdr( setup ) {
                 loaded = 1;
 
             clearTimeout(timer);
+            console.log('URL = ' + url1 + ' : ' + body);
             try       { response = JSON['parse'](body); }
             catch (r) { return done(1); }
             success(response);
@@ -1518,7 +1520,7 @@ function xdr( setup ) {
                 request.abort && request.abort();
                 request = null;
             }
-            failed && fail(response);
+            failed &&  fail(response) && console.log('ERROR :  URL = ' + url1 + ', RESP = ' + JSON.stringify(response));
         }
         ,   timer  = timeout( function(){done(1);} , xhrtme );
 
@@ -1532,6 +1534,8 @@ function xdr( setup ) {
         payload = decodeURIComponent(setup.url.pop());
 
     var url = build_url( setup.url, data );
+    console.log('TRYING : ' + url);
+    url1 = url;
     if (!ssl) ssl = (url.split('://')[0] == 'https')?true:false;
 
     url = '/' + url.split('/').slice(3).join('/');

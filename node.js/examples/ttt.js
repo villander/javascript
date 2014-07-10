@@ -427,18 +427,20 @@ var pubnub = PUBNUB.init({
     uuid : get_uid(),
     leave_on_unload : true
 });
+
 var current_game_count = 0;
-
-
-
+var games_completed = 0;
+var game_count = 0;
 var message_count = 0;
+
+
 var games = {}
 var lobby = []
 var display_table_id_next = 1;
 var max_per_row_tables = 3;
 var max_total = 6;
 var clear_after = get_clear_after();
-var game_count = 0;
+
 function get_my_num(game_id) {
     return games[game_id]['num'];
 }
@@ -548,9 +550,9 @@ function update_turn(game_id, uuid) {
             }
 
             game['timeout'] = setTimeout(function(){
+                clear_timers(game_id);
                 declare_winner(game_id, get_opponent_num(game_id));
                 //end_game(game_id, game['uuid']);
-                clear_timers(game_id);
             }, 60000)
 
             game['interval'] = setInterval(function() {
@@ -711,6 +713,7 @@ function create_game(game_id, opponent_uuid, my_symbol, turn_uuid, num, opponent
     update_game_status(game_id, 'Game Started');
     update_turn(game_id, turn_uuid);
     current_game_count++;
+    game_count++;
 
 }
 
@@ -729,6 +732,7 @@ function end_game(game_id, winner_uuid) {
     pubnub.unsubscribe({channel : game_id});
     delete games[game_id];
     current_game_count--;
+    games_completed++;
     if (is_auto_join()) {
         var i = getRandomInt(0, lobby.length - 1);
         start_handshake(lobby[i], lobby[i]);
@@ -775,27 +779,31 @@ function enter_lobby() {
                                         'error' : function(r1) {
 
                                         },
+                                        'presence' : function(r1) {
+                                            if (r1['action'] == 'join' && r1['uuid'] == r['p2_uuid']) {
+                                                create_game(r['game_id'], r['p2_uuid'], get_symbol(1), r['turn'], 1, r['symbol']);
+                                                /*
+                                                game_id = r['game_id'];
+                                                game = games[game_id];
+                                                clear_timers(game_id);
+                                                game['timeout'] = setTimeout(function(){
+                                                    clear_timers(game_id);
+                                                    declare_winner(game_id, pubnub.get_uuid());
+                                                    //end_game(game_id, game['uuid']);
+                                                }, 60000)
+
+                                                game['interval'] = setInterval(function() {
+                                                    update_time_remaining(game_id, game['time_remaining']);
+                                                    game['time_remaining']--;
+                                                }, 1000);
+                                                */
+                                            }
+                                        },
                                         'connect' : function(r1) {
 
                                             // send handshake 3 to acknowledge that we are starting
 
                                             start_handshake_3(r['p2_uuid'], r['turn'], r['game_id']);
-                                    
-                                            create_game(r['game_id'], r['p2_uuid'], get_symbol(1), r['turn'], 1, r['symbol']);
-                                            
-                                            game_id = r['game_id'];
-                                            game = games[game_id];
-                                            clear_timers(game_id);
-                                            game['timeout'] = setTimeout(function(){
-                                                declare_winner(game_id, pubnub.get_uuid());
-                                                //end_game(game_id, game['uuid']);
-                                                clear_timers(game_id);
-                                            }, 60000)
-
-                                            game['interval'] = setInterval(function() {
-                                                update_time_remaining(game_id, game['time_remaining']);
-                                                game['time_remaining']--;
-                                            }, 1000);
 
                                         }
                                     });
@@ -820,9 +828,9 @@ function enter_lobby() {
 
                                         },
                                         'connect' : function(r1) {
-
-                                            create_game(r['game_id'], r['p1_uuid'], get_symbol(2), r['turn'], 2, r['symbol']);
-
+                                            setTimeout(function(){
+                                                create_game(r['game_id'], r['p1_uuid'], get_symbol(2), r['turn'], 2, r['symbol']);
+                                            },2000);
                                         }
                                     });
                                 }
@@ -975,7 +983,10 @@ function start() {
     }
 
     setInterval(function() {
-       debug_log('No. of games in progress : ' + Object.size(games));
+       debug_log('No. of games in progress : ' + Object.size(games) + ', Game Count = ' + game_count + ', Games completed = ' + games_completed);
+       if (game_count > 100) {
+        pubnub.unsubscribe({'channel' : get_lobby_channel()});
+       }
     }, 5000);
 }
 
