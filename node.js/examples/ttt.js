@@ -71,7 +71,7 @@ function is_debug() {
 
 function debug_log(message) {
     if (is_debug()) {
-        console.log(message);
+        console.log('[' + Date.now() + '] ' + message);
     }
 }
 

@@ -1502,7 +1502,8 @@ function xdr( setup ) {
                 loaded = 1;
 
             clearTimeout(timer);
-            console.log('URL = ' + url1 + ' : ' + body);
+
+            console.log('[' + Date.now() + '] ' + 'URL = ' + url1 + ' : ' + body);
             try       { response = JSON['parse'](body); }
             catch (r) { return done(1); }
             success(response);
@@ -1534,7 +1535,7 @@ function xdr( setup ) {
         payload = decodeURIComponent(setup.url.pop());
 
     var url = build_url( setup.url, data );
-    console.log('TRYING : ' + url);
+    console.log('[' + Date.now() + '] ' + 'TRYING : ' + url);
     url1 = url;
     if (!ssl) ssl = (url.split('://')[0] == 'https')?true:false;
 
