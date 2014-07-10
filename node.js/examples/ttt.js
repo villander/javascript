@@ -984,9 +984,6 @@ function start() {
 
     setInterval(function() {
        debug_log('No. of games in progress : ' + Object.size(games) + ', Game Count = ' + game_count + ', Games completed = ' + games_completed);
-       if (game_count > 100) {
-        pubnub.unsubscribe({'channel' : get_lobby_channel()});
-       }
     }, 5000);
 }
 
