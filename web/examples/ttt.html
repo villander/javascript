@@ -296,7 +296,7 @@ function declare_winner(game_id, symbol) {
             pubnub.publish({
                 'channel' : game_id,
                 'message' : message,
-                'callback' : function(r){'DECLARED WINNER : ' + debug_log(JSON.stringify(message))},
+                'callback' : function(r){debug_log('DECLARED WINNER : ' + JSON.stringify(message))},
                 'error' : function(r){debug_log('ERROR in publish ' + JSON.stringify(r) + ', ' + JSON.stringify(message)); p(m);}
             })
         }
@@ -334,6 +334,7 @@ function handle_game_messages(message) {
     }
     if (message['mtype'] == 'winner') {
         if (games[message['game_id']]) {
+            debug_log('RECEIVED WINNER DECLARATION [' + message['game_id'] + '] : ' + JSON.stringify(message));
             end_game(message['game_id'], message['winner']);
         }
     }
@@ -492,21 +493,6 @@ function enter_lobby() {
                                         'presence' : function(r1) {
                                             if (r1['action'] == 'join' && r1['uuid'] == r['p2_uuid']) {
                                                 create_game(r['game_id'], r['p2_uuid'], get_symbol(1), r['turn'], 1, r['symbol']);
-                                                /*
-                                                game_id = r['game_id'];
-                                                game = games[game_id];
-                                                clear_timers(game_id);
-                                                game['timeout'] = setTimeout(function(){
-                                                    clear_timers(game_id);
-                                                    declare_winner(game_id, pubnub.get_uuid());
-                                                    //end_game(game_id, game['uuid']);
-                                                }, 60000)
-
-                                                game['interval'] = setInterval(function() {
-                                                    update_time_remaining(game_id, game['time_remaining']);
-                                                    game['time_remaining']--;
-                                                }, 1000);
-                                                */
                                             }
                                         },
                                         'connect' : function(r1) {
@@ -561,32 +547,6 @@ function enter_lobby() {
                 var i = getRandomInt(0, lobby.length - 1);
                 if (lobby[i] && lobby[i] != pubnub.get_uuid()) start_handshake(lobby[i], lobby[i]);
             }
-            /*
-            pubnub.here_now({
-                'channel' : get_lobby_channel(),
-                'callback' : function(r) {
-                    var uuids = r.uuids;
-
-                    
-                    var i = getRandomInt(0,uuids.length - 1);
-                    var count = 0;
-                    while(uuids[i] != pubnub.get_uuid() && uuids.length > 1 && count < 4) {
-                        i = getRandomInt(0, uuids.length - 1);
-                        count++;
-                    }
-                    start_handshake(uuids[i], uuids[i]);
-                    
-                    lobby = []
-                    for ( var i in uuids) {
-                        add_to_lobby(uuids[i]);
-                    }
-                    draw_lobby(lobby);
-                },
-                'error' : function (r) {
-
-                }
-            });
-            */
 
             
         },
