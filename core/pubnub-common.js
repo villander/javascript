@@ -2060,10 +2060,9 @@ function PN_API(setup) {
                 };
             }
 
-            ref['value'] = function(options) {
-
+            ref['value'] = function(path1) {
                 internal = _get_object_by_path(object_id,path);
-                return value(internal,_path(options));
+                return value(internal,path1);
             };
 
             ref['child'] = function(path) {
