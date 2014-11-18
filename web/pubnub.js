@@ -1733,6 +1733,52 @@ function PN_API(setup) {
         merge(args, callback);
     }
 
+    function _get_callbacks_from_options(options) {
+        var callbacks = {
+            'success'   : function(r){},
+            'error'     : function(r){}
+        }
+        if (options) {
+            callbacks['success']    = options['success'] || options['callback'] || function(r){};
+            callbacks['error']      = options['error']   || function(r){};
+        }
+        return callbacks;
+    }
+
+    function _get_from_options(options, key) {
+        if (options) {
+            if (isArray(key)) {
+                for ( var k in key) {
+                    if (options[key[k]]) return options[key[k]];
+                }
+            }
+            else {
+                return options[key];
+            }
+        }
+        return null;
+    }
+
+    function _success(options) {
+        return _get_from_options(options, ['success', 'callback']) || function(r){};
+    }
+
+    function _error(options) {
+        return _get_from_options(options, 'error') || function(r){};
+    }
+
+    function _path(options, path) {
+        if (options) {
+            if (!isEmpty(path)) {
+                return (!isEmpty(options['path']))?path + '.' + options['path']:path;
+            } else {
+                return options['path'];
+            }
+        } else {
+            return path;
+        }
+    }
+
     function get_wrapper(args, callback) {
          var callback        = args['callback'] || args['success'] || callback
         ,   err              = args['error']    || function(){}
@@ -2011,58 +2057,53 @@ function PN_API(setup) {
                     }
                 },
 
-                'merge'  : function(data, success, error) {
+                'merge'  : function(data, options) {
 
                     merge({
                         'object_id' : object_id,
-                        'path'      : path,
+                        'path'      : _path(options,path),
                         'data'      : data,
-                        'callback'  : success,
-                        'error'     : error
+                        'callback'  : _success(options),
+                        'error'     : _error(options)
                     });
 
                 },
 
-                'replace' : function(data, success, error) {
+                'replace' : function(data, options) {
 
                     replace({
                         'object_id' : object_id,
-                        'path'      : path,
+                        'path'      : _path(options,path),
                         'data'      : data,
-                        'callback'  : success,
-                        'error'     : error
+                        'callback'  : _success(options),
+                        'error'     : _error(options)
                     });
                 },
 
-                'remove'  : function(success, error) {
+                'remove'  : function(options) {
+
                     remove({
                         'object_id' : object_id,
-                        'path'      : path,
-                        'callback'  : success,
-                        'error'     : error
+                        'path'      : _path(options,path),
+                        'callback'  : _success(options),
+                        'error'     : _error(options)
                     });
                 },
 
-                'push'    : function(data, success, error) {
-                    merge({
+                'push'    : function(data, options) {
+
+                    var args = {
                         'object_id' : object_id,
-                        'path'      : path,
+                        'path'      : _path(options,path),
                         'data'      : data,
-                        'callback'  : success,
-                        'error'     : error,
+                        'callback'  : _success(options),
+                        'error'     : _error(options),
                         'mode'      : 'POST'
-                    });
-                },
-                'push_with_sort_key'    : function(data, sort_key, success, error) {
-                    merge({
-                        'object_id' : object_id,
-                        'path'      : path,
-                        'sort_key'  : sort_key,
-                        'data'      : data,
-                        'callback'  : success,
-                        'error'     : error,
-                        'mode'      : 'POST'
-                    });
+                    };
+                    if (!isEmpty(args['sort_key'])) {
+                        args['sort_key'] = options['sort_key'];
+                    }
+                    merge(args);
                 }
 
             }
@@ -2170,16 +2211,17 @@ function PN_API(setup) {
                 };
             }
 
-            ref['value'] = function(path1) {
+            ref['value'] = function(options) {
+
                 internal = _get_object_by_path(object_id,path);
-                return value(internal,path1);
+                return value(internal,_path(options));
             };
 
             ref['get'] = function(path) {
                 return SELF['sync'](location + '.' + path);
             };
 
-            ref['pop'] = function(success, error) {
+            ref['pop'] = function(options) {
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
@@ -2189,12 +2231,13 @@ function PN_API(setup) {
 
                 remove({
                     'object_id' : location + '.' + last_key,
-                    'callback'  : success,
-                    'error'     : error
+                    'callback'  : _success(options),
+                    'error'     : _error(options)
                 });
                 return value(internal[last_key]);
             };
-            ref['removeByIndex'] = function(index, success, error) {
+            ref['removeByIndex'] = function(index, options) {
+
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
@@ -2204,8 +2247,8 @@ function PN_API(setup) {
                     var key = keys[index];
                     remove({
                         'object_id' : location + '.' + key,
-                        'callback'  : success,
-                        'error'     : error
+                        'callback'  : _success(options),
+                        'error'     : _error(options)
                     });
                     return value(internal[key]);
                 } catch (e) {
@@ -2213,7 +2256,8 @@ function PN_API(setup) {
                 }
             };
 
-            ref['replaceByIndex'] = function(index, data, success, error) {
+            ref['replaceByIndex'] = function(index, value, options) {
+
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
@@ -2223,9 +2267,9 @@ function PN_API(setup) {
                     var key = keys[index];
                     SELF['replace']({
                         'object_id' : location + '.' + key,
-                        'data'      : data,
-                        'callback'  : success,
-                        'error'     : error
+                        'data'      : value,
+                        'callback'  : _success(options),
+                        'error'     : _error(options)
                     });
                     return value(internal[key]);
                 } catch (e) {
@@ -2233,20 +2277,20 @@ function PN_API(setup) {
                 }
             };
 
-            ref['removeByKey'] = function(key, success, error) {
+            ref['removeByKey'] = function(key, options) {
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
                 }
                 remove({
                     'object_id' : location + '.' + key,
-                    'callback'  : success,
-                    'error'     : error
+                    'callback'  : _success(options),
+                    'error'     : _error(options)
                 });
                 return value(internal[key]);
 
             };
-            ref['replaceByKey'] = function(key, data, success, error) {
+            ref['replaceByKey'] = function(key, data, options) {
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
@@ -2254,13 +2298,14 @@ function PN_API(setup) {
                 SELF['replace']({
                     'object_id' : location + '.' + key,
                     'data'      : data,
-                    'callback'  : success,
-                    'error'     : error
+                    'callback'  : _success(options),
+                    'error'     : _error(options)
                 });
                 return value(internal[key]);
 
             };
-            ref['removeByValue'] = function(val, success, error) {
+            ref['removeByValue'] = function(val, options) {
+                
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
@@ -2272,8 +2317,8 @@ function PN_API(setup) {
 
                 remove({
                     'object_id' : location + '.' + key,
-                    'callback'  : success,
-                    'error'     : error
+                    'callback'  : _success(options),
+                    'error'     : _error(options)
                 });
                 return value(internal[key]);
 
@@ -2287,7 +2332,8 @@ function PN_API(setup) {
 
             };
 
-            ref['replaceByValue'] = function(val, data, success, error) {
+            ref['replaceByValue'] = function(val, value_replace, options) {
+
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
@@ -2298,9 +2344,9 @@ function PN_API(setup) {
 
                 remove({
                     'object_id' : location + '.' + key,
-                    'data'      : data,
-                    'callback'  : success,
-                    'error'     : error
+                    'data'      : value_replace,
+                    'callback'  : _success(options),
+                    'error'     : _error(options)
                 });
                 return value(internal[key]);
 

@@ -78,13 +78,26 @@ test("push() test", function() {
 
     students.on.ready(function(ref){
         start();
-        students.push("a", function(){
-            students.push("b", function(){
-                students.push("c", function(){
-                    students.push("d");
-                });
-            });
-        });
+        students.push("a", 
+            {
+                'success' : function(){
+                    students.push("b", 
+                        {
+                            'success' : function(){
+                                students.push("c", 
+                                    {   
+                                        'success' : function(){
+                                            students.push("d");
+                                        }
+                                    }
+                                );
+                            }
+                        }
+                    );
+                }
+            }
+
+        );
         
     })
     students.on.merge(function(ref){
@@ -94,7 +107,7 @@ test("push() test", function() {
 
 });
 
-test("push_with_sort_key() test", function() {
+test("push() with sort_key test", function() {
     expect(4);
     stop(5);
     var seed             = pn_random() + '-ready-';
@@ -105,13 +118,28 @@ test("push_with_sort_key() test", function() {
 
     students.on.ready(function(ref){
         start();
-        students.push_with_sort_key("d", "z", function(){
-            students.push_with_sort_key("c", "s", function(){
-                students.push_with_sort_key("b", "d", function(){
-                    students.push_with_sort_key("a", "b");
-                });
-            });
-        });
+        students.push("d", 
+            {
+                'sort_key'  : "z", 
+                'success'   : function(){
+                    students.push("c",
+                        { 
+                            'sort_key' : "s", 
+                            'success'  : function(){
+                                students.push("b",
+                                    {
+                                        'sort_key' : "d", 
+                                        'success'  : function(){
+                                            students.push("a", { 'sort_key' : "b" });
+                                        }
+                                    }
+                                );
+                            }
+                        }
+                    );
+                }
+            }
+        );
     })
     students.on.merge(function(ref){
         deepEqual(ref.value().sort(), ref.value());

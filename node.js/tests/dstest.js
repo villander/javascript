@@ -77,24 +77,34 @@ describe('Pubnub', function() {
             var students         = pubnub.sync(seed + '.students');
 
             students.on.ready(function(ref){
-                students.push("a", function(){
-                    students.push("b", function(){
-                        students.push("c", function(){
-                            students.push("d");
-                        });
-                    });
-                });
+                students.push("a", 
+                    {
+                        'success' : function(){
+                            students.push("b", 
+                                {
+                                    'success' : function(){
+                                        students.push("c", 
+                                            {   
+                                                'success' : function(){
+                                                    students.push("d");
+                                                }
+                                            }
+                                        );
+                                    }
+                                }
+                            );
+                        }
+                    }
+
+                );
                 
-            })
+            });
             students.on.merge(function(ref){
                 assert.deepEqual(ref.value(), students_list.slice(0,ref.value().length));
                 if (!--done_count) done();
             })
 
         });
-    })
-
-    describe('#push_with_sort_key()', function(){
         it("should be able to push data with sort key", function(done) {
 
             var seed             = pn_random() + '-ready-';
@@ -104,13 +114,28 @@ describe('Pubnub', function() {
             var students         = pubnub.sync(seed + '.students');
 
             students.on.ready(function(ref){
-                students.push_with_sort_key("d", "z", function(){
-                    students.push_with_sort_key("c", "s", function(){
-                        students.push_with_sort_key("b", "d", function(){
-                            students.push_with_sort_key("a", "b");
-                        });
-                    });
-                });
+                students.push("d", 
+                    {
+                        'sort_key'  : "z", 
+                        'success'   : function(){
+                            students.push("c",
+                                { 
+                                    'sort_key' : "s", 
+                                    'success'  : function(){
+                                        students.push("b",
+                                            {
+                                                'sort_key' : "d", 
+                                                'success'  : function(){
+                                                    students.push("a", { 'sort_key' : "b" });
+                                                }
+                                            }
+                                        );
+                                    }
+                                }
+                            );
+                        }
+                    }
+                );
             })
             students.on.merge(function(ref){
                 assert.deepEqual(ref.value().sort(), ref.value());
@@ -119,6 +144,7 @@ describe('Pubnub', function() {
 
         });
     })
+
 
     describe('#sync()', function(){
         
