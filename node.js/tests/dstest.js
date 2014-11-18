@@ -170,7 +170,7 @@ describe('Pubnub', function() {
             })
             it('should get invoked on sync reference ready, when we are already listening to parent location and child references were created using get', function(done){
                 var ref1 = pubnub.sync(seed + 'x.y.z');
-                var ref2 = ref1.get('x1.y1.z1');
+                var ref2 = ref1.child('x1.y1.z1');
 
                 ref2.on.ready(function(r){
                     assert.ok(true,"Ready should be called");
@@ -185,11 +185,11 @@ describe('Pubnub', function() {
 
                 var r2 = pubnub.sync(seed + 'a.b');
 
-                var r3 = r2.get('c.d');
+                var r3 = r2.child('c.d');
 
-                var r4 = r3.get('e').get('f');
+                var r4 = r3.child('e').child('f');
 
-                var r5 = r4.get('i.j.k');
+                var r5 = r4.child('i.j.k');
 
                 var r6 = pubnub.sync(seed + 'a.b.c.d.e.f.g.h.i.j.k.l');
 
@@ -258,21 +258,21 @@ describe('Pubnub', function() {
                             start();
                         });
 
-                        var r3 = r2.get('c.d');
+                        var r3 = r2.child('c.d');
 
                         r3.on.ready(function(ref){
                             deepEqual(ref.value('e.f.g.h.i.j.k.l'), 'data' + seed);
                             start();
                         });
 
-                        var r4 = r3.get('e').get('f');
+                        var r4 = r3.child('e').child('f');
 
                         r4.on.ready(function(ref){
                             deepEqual(ref.value('g.h.i.j.k.l'), 'data' + seed);
                             start();
                         });
 
-                        var r5 = r4.get('g.h.i.j.k');
+                        var r5 = r4.child('g.h.i.j.k');
 
                         r5.on.ready(function(ref){
                             deepEqual(ref.value('l'), 'data' + seed);
@@ -431,7 +431,7 @@ describe('Pubnub', function() {
                             start();
                         });
 
-                        var r3 = r2.get('c.d');
+                        var r3 = r2.child('c.d');
 
                         r3.on.ready(function(ref){
                             deepEqual(ref.value('e.f.g.h.i.j.k.l'), val1);
@@ -442,7 +442,7 @@ describe('Pubnub', function() {
                             start();
                         });
 
-                        var r4 = r3.get('e').get('f');
+                        var r4 = r3.child('e').child('f');
 
                         r4.on.ready(function(ref){
                             deepEqual(ref.value('g.h.i.j.k.l'), val1);
@@ -454,7 +454,7 @@ describe('Pubnub', function() {
                         });
 
 
-                        var r5 = r4.get('g.h.i.j.k');
+                        var r5 = r4.child('g.h.i.j.k');
 
                         r5.on.ready(function(ref){
                             deepEqual(ref.value('l'), val1);
@@ -610,7 +610,7 @@ describe('Pubnub', function() {
                             start();
                         });
 
-                        var r3 = r2.get('c.d');
+                        var r3 = r2.child('c.d');
 
                         r3.on.ready(function(ref){
                             deepEqual(ref.value('e.f.g.h.i.j.k.l'), val1);
@@ -625,7 +625,7 @@ describe('Pubnub', function() {
                             start();
                         });
 
-                        var r4 = r3.get('e').get('f');
+                        var r4 = r3.child('e').child('f');
 
                         r4.on.ready(function(ref){
                             deepEqual(ref.value('g.h.i.j.k.l'), val1);
@@ -641,7 +641,7 @@ describe('Pubnub', function() {
                         });
 
 
-                        var r5 = r4.get('g.h.i.j.k');
+                        var r5 = r4.child('g.h.i.j.k');
 
                         r5.on.ready(function(ref){
                             deepEqual(ref.value('l'), val1);
@@ -796,7 +796,7 @@ describe('Pubnub', function() {
                             assert.deepEqual(ref.value('c.d.e.f.g.h.i.j.k.l'), val3);
                         });
 
-                        var r3 = r2.get('c.d');
+                        var r3 = r2.child('c.d');
 
                         r3.on.ready(function(ref){
                             assert.deepEqual(ref.value('e.f.g.h.i.j.k.l'), val1);
@@ -808,7 +808,7 @@ describe('Pubnub', function() {
                             assert.deepEqual(ref.value('e.f.g.h.i.j.k.l'), val3);
                         });
 
-                        var r4 = r3.get('e').get('f');
+                        var r4 = r3.child('e').child('f');
 
                         r4.on.ready(function(ref){
                             assert.deepEqual(ref.value('g.h.i.j.k.l'), val1);
@@ -821,7 +821,7 @@ describe('Pubnub', function() {
                         });
 
 
-                        var r5 = r4.get('g.h.i.j.k');
+                        var r5 = r4.child('g.h.i.j.k');
 
                         r5.on.ready(function(ref){
                             assert.deepEqual(ref.value('l'), val1);

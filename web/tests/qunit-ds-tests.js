@@ -157,11 +157,11 @@ test("on.ready() should be invoked properly when listening at multiple locations
 
     var r2 = pubnub.sync(seed + 'a.b');
 
-    var r3 = r2.get('c.d');
+    var r3 = r2.child('c.d');
 
-    var r4 = r3.get('e').get('f');
+    var r4 = r3.child('e').child('f');
 
-    var r5 = r4.get('i.j.k');
+    var r5 = r4.child('i.j.k');
 
     var r6 = pubnub.sync(seed + 'a.b.c.d.e.f.g.h.i.j.k.l');
 
@@ -232,21 +232,21 @@ test("on.ready() should be invoked only when data object is ready", function() {
                 start();
             });
 
-            var r3 = r2.get('c.d');
+            var r3 = r2.child('c.d');
 
             r3.on.ready(function(ref){
                 deepEqual(ref.value('e.f.g.h.i.j.k.l'), 'data' + seed);
                 start();
             });
 
-            var r4 = r3.get('e').get('f');
+            var r4 = r3.child('e').child('f');
 
             r4.on.ready(function(ref){
                 deepEqual(ref.value('g.h.i.j.k.l'), 'data' + seed);
                 start();
             });
 
-            var r5 = r4.get('g.h.i.j.k');
+            var r5 = r4.child('g.h.i.j.k');
 
             r5.on.ready(function(ref){
                 deepEqual(ref.value('l'), 'data' + seed);
@@ -335,7 +335,7 @@ test("on.merge() should be work propertly when listening to various locations in
                 start();
             });
 
-            var r3 = r2.get('c.d');
+            var r3 = r2.child('c.d');
 
             r3.on.ready(function(ref){
                 deepEqual(ref.value('e.f.g.h.i.j.k.l'), val1);
@@ -346,7 +346,7 @@ test("on.merge() should be work propertly when listening to various locations in
                 start();
             });
 
-            var r4 = r3.get('e').get('f');
+            var r4 = r3.child('e').child('f');
 
             r4.on.ready(function(ref){
                 deepEqual(ref.value('g.h.i.j.k.l'), val1);
@@ -358,7 +358,7 @@ test("on.merge() should be work propertly when listening to various locations in
             });
 
 
-            var r5 = r4.get('g.h.i.j.k');
+            var r5 = r4.child('g.h.i.j.k');
 
             r5.on.ready(function(ref){
                 deepEqual(ref.value('l'), val1);
@@ -467,7 +467,7 @@ test("on.replace() should be work propertly when listening to various locations 
                 start();
             });
 
-            var r3 = r2.get('c.d');
+            var r3 = r2.child('c.d');
 
             r3.on.ready(function(ref){
                 deepEqual(ref.value('e.f.g.h.i.j.k.l'), val1);
@@ -482,7 +482,7 @@ test("on.replace() should be work propertly when listening to various locations 
                 start();
             });
 
-            var r4 = r3.get('e').get('f');
+            var r4 = r3.child('e').child('f');
 
             r4.on.ready(function(ref){
                 deepEqual(ref.value('g.h.i.j.k.l'), val1);
@@ -498,7 +498,7 @@ test("on.replace() should be work propertly when listening to various locations 
             });
 
 
-            var r5 = r4.get('g.h.i.j.k');
+            var r5 = r4.child('g.h.i.j.k');
 
             r5.on.ready(function(ref){
                 deepEqual(ref.value('l'), val1);
@@ -642,7 +642,7 @@ test("on.remove() should be work properly when listening to various locations in
                 start();
             });
 
-            var r3 = r2.get('c.d');
+            var r3 = r2.child('c.d');
 
             r3.on.ready(function(ref){
                 deepEqual(ref.value('e.f.g.h.i.j.k.l'), val1);
@@ -657,7 +657,7 @@ test("on.remove() should be work properly when listening to various locations in
                 start();
             });
 
-            var r4 = r3.get('e').get('f');
+            var r4 = r3.child('e').child('f');
 
             r4.on.ready(function(ref){
                 deepEqual(ref.value('g.h.i.j.k.l'), val1);
@@ -673,7 +673,7 @@ test("on.remove() should be work properly when listening to various locations in
             });
 
 
-            var r5 = r4.get('g.h.i.j.k');
+            var r5 = r4.child('g.h.i.j.k');
 
             r5.on.ready(function(ref){
                 deepEqual(ref.value('l'), val1);

@@ -2067,7 +2067,7 @@ function PN_API(setup) {
                 return value(internal,_path(options));
             };
 
-            ref['get'] = function(path) {
+            ref['child'] = function(path) {
                 return SELF['sync'](location + '.' + path);
             };
 
