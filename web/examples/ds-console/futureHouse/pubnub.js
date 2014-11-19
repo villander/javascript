@@ -335,12 +335,12 @@ function generate_channel_list(channels, nopresence) {
     var list = [];
     each( channels, function( channel, status ) {
         if (nopresence) {
-            if(channel.search('-pnpres') < 0) { 
+            if(channel.search('-pnpres') < 0) {
                 if (status.subscribed) list.push(channel);
-            }    
+            }
         } else {
             if (status.subscribed) list.push(channel);
-        }  
+        }
     });
     return list.sort();
 }
@@ -387,7 +387,7 @@ function PNmessage(args) {
         if (msg['gcm']) {
             m['pn_gcm'] = {
                 'data' : msg['gcm']
-            } 
+            }
         }
 
         for (var k in msg) {
@@ -401,9 +401,9 @@ function PNmessage(args) {
         return m;
     };
     msg['publish'] = function() {
-        
+
         var m = msg.getPubnubMessage();
-        
+
         if (msg['pubnub'] && msg['channel']) {
             msg['pubnub'].publish({
                 'message' : m,
@@ -466,6 +466,7 @@ function PN_API(setup) {
     ,   params        = setup['params'] || {}
     ,   error         = setup['error']      || function() {}
     ,   _is_online    = setup['_is_online'] || function() { return 1 }
+    ,   _build_u      = setup['build_u']
     ,   jsonp_cb      = setup['jsonp_cb']   || function() { return 0 }
     ,   db            = setup['db']         || {'get': function(){}, 'set': function(){}}
     ,   CIPHER_KEY    = setup['cipher_key']
@@ -479,6 +480,7 @@ function PN_API(setup) {
 
     function _get_url_params(data) {
         if (!data) data = {};
+        if (_build_u) data['pnr'] = '' + Math.floor((Math.random() * 100000000000000000000) + 1);
         each( params , function( key, value ) {
             if (!(key in data)) data[key] = value;
         });
@@ -491,7 +493,7 @@ function PN_API(setup) {
             l.push(key);
         });
         return l;
-    }    
+    }
     function _object_to_key_list_sorted(o) {
         return _object_to_key_list(o).sort();
     }
@@ -599,14 +601,25 @@ function PN_API(setup) {
     }
     function _invoke_callback(response, callback, err) {
         if (typeof response == 'object') {
-            if (response['error'] && response['message'] && response['payload']) {
-                err({'message' : response['message'], 'payload' : response['payload']});
+            if (response['error']) {
+                var callback_data = {};
+
+                if (response['message']) {
+                    callback_data['message'] = response['message'];
+                }
+
+                if (response['payload']) {
+                    callback_data['payload'] = response['payload'];
+                }
+
+                err && err(callback_data);
                 return;
+
             }
             if (response['payload']) {
                 if (response['next_page'])
                     callback && callback(response['payload'], response['next_page']);
-                else 
+                else
                     callback && callback(response['payload']);
                 return;
             }
@@ -615,9 +628,20 @@ function PN_API(setup) {
     }
 
     function _invoke_error(response,err) {
-        if (typeof response == 'object' && response['error'] &&
-            response['message'] && response['payload']) {
-            err && err({'message' : response['message'], 'payload' : response['payload']});
+
+        if (typeof response == 'object' && response['error']) {
+                var callback_data = {};
+
+                if (response['message']) {
+                    callback_data['message'] = response['message'];
+                }
+
+                if (response['payload']) {
+                    callback_data['payload'] = response['payload'];
+                }
+                
+                err && err(callback_data);
+                return;
         } else {
             err && err(response);
         }
@@ -625,7 +649,7 @@ function PN_API(setup) {
 
     function _get_id_and_path_from_full_id(full_object_id) {
         var r = {};
-        
+
         if (isEmpty(full_object_id) || full_object_id.length == 0) return r;
 
         var full_object_id_split = full_object_id.split('.')
@@ -643,16 +667,16 @@ function PN_API(setup) {
         // get update path from response
         var path    = update.location.split(".");
         var action  = update.action;
-        
+
         var path_length = path.length;
-        
+
         // references to nodes in the path
         var pathNodes = [];
 
         // last node name
         var last = path.pop();
         path.shift();
-        
+
         // x is the place where data exists
         var x = o;
 
@@ -674,7 +698,7 @@ function PN_API(setup) {
             } catch (e) {
                 // add new object at the path, this is to create the same
                 // tree structure in our internal object
-                x[path[p]] = {};  
+                x[path[p]] = {};
             }
             // x to next node in the path
             x = x[path[p]];
@@ -692,11 +716,13 @@ function PN_API(setup) {
                     if (!x[last]['pn_tt'] || x[last]['pn_tt'] < update.timetoken) {
                         x[last]['pn_val'] = update.value;
                         x[last]['pn_tt'] = update.timetoken;
+                    } else {
+                        return null;
                     }
                 } catch (e) {
                     x[last] = {}
                     x[last]['pn_val'] = update.value;
-                    x[last]['pn_tt'] = update.timetoken;   
+                    x[last]['pn_tt'] = update.timetoken;
                 }
             } else {
                 try {
@@ -707,11 +733,11 @@ function PN_API(setup) {
                 } catch (e) {
                     o = {}
                     o['pn_val'] = update.value;
-                    o['pn_tt'] = update.timetoken;   
+                    o['pn_tt'] = update.timetoken;
                 }
             }
         }
-        // handle deletion 
+        // handle deletion
         else if (action == 'delete') {
 
             if (path_length  > 0) {
@@ -719,7 +745,7 @@ function PN_API(setup) {
                 // delete the last node
 
                 if (!isEmpty(x[last])) update.value = x[last]['pn_val'];
-                
+
                 delete x[last]
 
                 // now return back to root while examining each node on path
@@ -736,14 +762,14 @@ function PN_API(setup) {
                 }
             } else {
                 // complete tree empty now due to no non leaf node existence
-                o = {}
+                o = null;
             }
         }
         // return update at , need to reconsider
-        return update.value;   
+        return update.value;
     }
     function apply_updates(o, callback, trans_id) {
-
+        var applied = false;
         var update = UPDATES[trans_id];
 
         var update_at;
@@ -759,8 +785,12 @@ function PN_API(setup) {
                 var action_event = actions_list[i];
 
                 // apply event, update at value will be returned
-                //action_event.update_at = 
+                //action_event.update_at =
                 action_event.value = apply_update(o, action_event);
+
+                if (action_event.value) {
+                    applied = true;
+                }
 
                 // parse location and set for callback parameter data
                 action_event.location = action_event.location.split("pn_ds_")[1];
@@ -770,9 +800,9 @@ function PN_API(setup) {
                 delete action_event.timetoken;
             }
             // invoke callback with actions_list as argument
-            callback && callback(actions_list);
+            applied && callback && callback(actions_list);
 
-            // delete update 
+            // delete update
 
             delete UPDATES[trans_id];
         }
@@ -850,24 +880,24 @@ function PN_API(setup) {
             return b;
         }
 
-        // if both a and b exist, then 
+        // if both a and b exist, then
         if (a && b) {
 
             // iterate over keys in b
             for (var key in b) {
 
-                // if key does not exist in a, then add add 
+                // if key does not exist in a, then add add
                 // key to a
                 if (!a[key] || typeof b[key] !== 'object') {
                     a[key] = b[key];
                 }
 
                 // if key exists in a, then do a recursive merge at
-                // next level 
+                // next level
                 else {
-                
+
                     a[key] = mergeAtOneLevel(a[key], b[key]);
-                
+
                 }
             }
         }
@@ -881,7 +911,7 @@ function PN_API(setup) {
         var arr = [];
         for(var key in obj){
             if(obj.hasOwnProperty(key)){
-                keys.push(key); 
+                keys.push(key);
             }
         }
         keys.sort();
@@ -903,7 +933,7 @@ function PN_API(setup) {
         var arr = [];
         for(var key in obj){
             if(obj.hasOwnProperty(key)){
-                keys.push(key); 
+                keys.push(key);
             }
         }
         keys.sort();
@@ -913,7 +943,7 @@ function PN_API(setup) {
     function isPnList(l) {
         for(var key in l){
             if(l.hasOwnProperty(key)){
-                if (key.indexOf("-!") == 0)
+                if (key.indexOf("-") == 0 && key.indexOf("!") > 0)
                     return true;
             }
         }
@@ -987,7 +1017,7 @@ function PN_API(setup) {
             return o['pn_val'];
         else
             return null;
-        
+
     }
 
     function _get_parent_by_path(obj, path) {
@@ -1024,7 +1054,7 @@ function PN_API(setup) {
     function _get_parent_by_path_with_create(obj, path) {
 
         var split = path.split('.');
-        
+
         if (split[split.length - 1] == '') split.pop();
         split.pop()
 
@@ -1074,11 +1104,11 @@ function PN_API(setup) {
             if (location.indexOf(channel + '.') == 0 ) {
                 return channel;
             }
-            
+
         }
 
         if (!parent_location) DS_CHANNELS[location] = true;
-        
+
         // return parent location if we are already listening to parent location
         return parent_location;
     }
@@ -1097,7 +1127,7 @@ function PN_API(setup) {
                     location = location + '.' + path;
                     last_node_key = path.split('.').pop();
                 }
-                 
+
                 var next_page = r['next_page'];
 
                 var payload = r['payload'];
@@ -1115,7 +1145,7 @@ function PN_API(setup) {
                 if (!next_page || (next_page && next_page == "null")) {
 
                     done && done(location);
-                    
+
 
                 } else {
                     // sync incomplete
@@ -1128,14 +1158,14 @@ function PN_API(setup) {
             },
             'error'     : function(r) {
 
-               // error  
+               // error
                error && error(r);
             }
         })
     }
 
     function resync_all() {
-        
+
         UPDATES = {};
         for (var c in OBJECTS) {
 
@@ -1181,8 +1211,6 @@ function PN_API(setup) {
                 }
 
                 resync_callback(callback_data);
-
-
             }
         });
     }
@@ -1198,6 +1226,8 @@ function PN_API(setup) {
         var callback         = args['callback']
         ,   err              = args['error']    || function(){}
         ,   connect          = args['connect']
+        ,   disconnect       = args['disconnect']
+        ,   reconnect        = args['reconnect']
         ,   object_id        = args['object_id']
         ,   path             = args['path'];
 
@@ -1216,7 +1246,7 @@ function PN_API(setup) {
         if (parent_location) {
             /*
                 since we are already listening to a parent location,
-                it means we already have data for this object id. 
+                it means we already have data for this object id.
                 lets find the object based on the path from existing
                 tree and return. also if parent_location object is ready
                 for use already, then lets mark this object callbacks also
@@ -1224,7 +1254,7 @@ function PN_API(setup) {
             */
 
             var o = OBJECTS[object_id];
-            
+
             for (var p in split_path) {
                 var sp = split_path[p];
                 if (sp && sp.length > 0) {
@@ -1233,7 +1263,7 @@ function PN_API(setup) {
                 }
             }
 
-            if (DS_CALLBACKS[location] && DS_CALLBACKS[parent_location] && 
+            if (DS_CALLBACKS[location] && DS_CALLBACKS[parent_location] &&
                 DS_CALLBACKS[parent_location]['is_ready']) {
                 DS_CALLBACKS[location]['is_ready'] = true;
             }
@@ -1244,7 +1274,7 @@ function PN_API(setup) {
 
         // Is object sync complete ? !!! REFACTORING POTENTIAL
         var synced = false;
-        
+
         // depth at which we are listening   !!!! REFACTORING POTENTIAL
         var depth = 0;
 
@@ -1262,7 +1292,7 @@ function PN_API(setup) {
 
 
 
-        /* 
+        /*
             subscribe to 3 channels . for ex. if obj id is 'ab'
             a. normal channel       pn_ds_ab
             b. wildcard channel     pn_ds_ab.*
@@ -1273,7 +1303,7 @@ function PN_API(setup) {
             'channel'     : _get_channels_for_subscribe(),
 
             'connect'     : function(r, timetoken) {
-                
+
                 if (r.indexOf('dstr') < 0 && r.indexOf('*') < 0) {
                     // start reading initial copy of object and populate internal copy
 
@@ -1283,8 +1313,9 @@ function PN_API(setup) {
                     read_recursive(object_id, path, callback, error, null, timetoken, function(location){
 
                         // all updates recieved , now apply
-                        apply_all_updates(parent[last_node_key], callback);
-
+                        //apply_all_updates(parent[last_node_key], callback);
+                        apply_all_updates(OBJECTS[object_id], callback);
+                        
                         // sync complete
                         synced = true;
 
@@ -1292,10 +1323,10 @@ function PN_API(setup) {
                         connect && connect(location);
 
                     });
-                } 
+                }
             },
             'callback'    : function(r,c,ch) {
-                
+
                 if (!r['location']) {
                     r['location'] = ch;
                 }
@@ -1319,10 +1350,10 @@ function PN_API(setup) {
 
                     if ( status == 'complete' ) {
                         if (UPDATES[trans_id]) {
-                    
-                    
+
+
                             var location = UPDATES[trans_id].list[0].location;
-                            
+
                             var object_id = (location.split('.')[0]).split('pn_ds_')[1];
 
                             if (OBJECTS_SYNC_PENDING[object_id]) {
@@ -1332,10 +1363,10 @@ function PN_API(setup) {
                                 });
                             } else {
                                 UPDATES[trans_id]['complete'] = true;
-                                
+
                                 if (!OBJECTS[object_id]) OBJECTS[object_id] = {};
 
-                                if (synced) apply_updates(OBJECTS[object_id], callback, trans_id);                                
+                                if (synced) apply_updates(OBJECTS[object_id], callback, trans_id);
                             }
 
 
@@ -1345,7 +1376,7 @@ function PN_API(setup) {
                     }
                 }
             },
-            'error'       : function(r) { 
+            'error'       : function(r) {
                 var errobj = {'message' : 'Data Sync Error'};
 
                 //error
@@ -1353,6 +1384,16 @@ function PN_API(setup) {
 
                 err(errobj);
 
+            },
+            'disconnect'       : function(r) {
+                if (r && r.indexOf('pn_dstr_') == 0) {
+                    disconnect && disconnect();
+                }
+            },
+            'reconnect'       : function(r) {
+                if (r && r.indexOf('pn_dstr_') == 0) {
+                    reconnect && reconnect();
+                }
             }
         });
 
@@ -1363,7 +1404,7 @@ function PN_API(setup) {
 
         if (isEmpty(object)) return [];
 
-        if (!isPnList(object) ){                                
+        if (!isPnList(object) ){
             return [];
         }
 
@@ -1382,22 +1423,22 @@ function PN_API(setup) {
         }
         if (!isEmpty(d['pn_val'])) {
             return d['pn_val'];
-        
+
         } else if (isPnList(d)) { // array
-            
+
             return objectToSortedArray(d);
-        
+
         } else { // object
-        
+
             return d;
-        
+
         }
     }
     function value(object, path) {
 
         if (isEmpty(object)) return {};
 
-        if (!path && isEmpty(object['pn_val']) && !isPnList(object) ){                                
+        if (!path && isEmpty(object['pn_val']) && !isPnList(object) ){
             return object;
         }
 
@@ -1418,35 +1459,67 @@ function PN_API(setup) {
                 return null;
             }
         }
+
         if (!isEmpty(d['pn_val'])) {
             return d['pn_val'];
-        
+
         } else if (isPnList(d)) { // array
-            
+
             return objectToSortedArray(d);
-        
+
         } else { // object
-        
+            
             return d;
-        
+
+        }
+    }
+
+    function transform(k,v) {
+
+        if (v && !isEmpty(v['pn_val'])) {
+            return v['pn_val'];
+
+        } else if (isPnList(v)) { // array
+
+            return objectToSortedArray(v);
+
+        } else { // object
+
+            return v;
         }
     }
 
     function _get_callback_data(event_type, changes, callback_location, path, update_at) {
-        var isplit = callback_location.split(".");
-        var object_id = isplit.shift();
+        var isplit      = callback_location.split(".");
+        var object_id   = isplit.shift();
 
-        var p = isplit.join('.');
+        var p           = isplit.join('.');
+        var data        = _get_object_by_path(object_id, p);
 
         var callback_data = {};
         callback_data['delta'] = changes;
-
         callback_data['type'] = 'merge';
-        callback_data['data'] = _get_object_by_path(object_id, p);
-        callback_data['parent'] = _get_parent_by_path(object_id, p);
-        callback_data['value'] = function(path) {
-            return value(callback_data['data'], path) || {};
+        callback_data['data'] = JSON.parse(JSON.stringify(data, transform) || null);
+
+        if (isPnList(data)) {
+            callback_data['each'] =  function(callback) {
+                if(!isPnList(data)) {
+                    return null;
+                }
+                var keys = Object.keys(data);
+                for (var key in keys) {
+                    callback && callback(SELF['sync'](location + '.' + keys[key]), keys[key]);
+                }
+            }
         }
+        callback_data['parent'] = _get_parent_by_path(object_id, p);
+        callback_data['value'] = 
+            (function(local_data){
+                return function(path) {
+                    return value(local_data, path);
+                }
+            })(callback_data['data']);
+
         callback_data['path'] = update_at;
         return callback_data;
     }
@@ -1462,15 +1535,31 @@ function PN_API(setup) {
             var oid                     = callback_location_split['id'];
             var path                    = callback_location_split['path'];
 
-            if (callback_object['is_ready'] && 
+            if (callback_object['is_ready'] &&
                 !callback_object['ready_called'] &&
                 ready_callback) {
-                var callback_data = {};
+                var callback_data       = {};
+                var data                = _get_object_by_path(oid, path);
                 callback_data['type'] = 'ready';
-                callback_data['data'] = _get_object_by_path(oid, path);
-                callback_data['value'] = function(path) {
-                    return value(callback_data['data'], path);
+                callback_data['data'] = JSON.parse(JSON.stringify(data, transform) || null);
+                if (isPnList(data)) {
+                    callback_data['each'] =  function(callback) {
+                        if(!isPnList(data)) {
+                            return null;
+                        }
+                        var keys = getObjectKeysSorted(data);
+                        for (var key in keys) {
+                            callback && callback(SELF['sync'](callback_location + '.' + keys[key]), keys[key]);
+                        }
+                    }
                 }
+                callback_data['value'] = 
+                (function(local_data){
+                    return function(path) {
+                        return value(local_data, path);
+                    }
+                })(callback_data['data']);
+
                 callback_object['ready_called'] = true;
                 ready_callback(callback_data);
             }
@@ -1543,7 +1632,7 @@ function PN_API(setup) {
                 }
             }
         }
-        
+
         return callbacks;
     }
 
@@ -1557,6 +1646,202 @@ function PN_API(setup) {
             if (data[keys[i]]['pn_val'] === value) return keys[i];
         }
         return null;
+    }
+
+    function merge(args, callback) {
+        var callback        = args['callback'] || args['success'] || callback
+        ,   err              = args['error']    || function(){}
+        ,   object_id        = args['object_id']
+        ,   content          = args['data']
+        ,   jsonp            = jsonp_cb()
+        ,   auth_key         = args['auth_key'] || AUTH_KEY
+        ,   sort_key         = args['sort_key']
+        //,   data             = { 'uuid' : UUID, 'auth' : auth_key, 'test_tr_only' : 1}
+        ,   data             = { 'uuid' : UUID, 'auth' : auth_key}
+        ,   mode             = args['mode'] || 'PATCH'
+        ,   path             = args['path'];
+
+        // Make sure we have a Channel
+        if (!object_id)             return error('Missing Object Id');
+        if (isNullOrUndef(content)) return error('Missing Data');
+        if (!SUBSCRIBE_KEY)         return error('Missing Subscribe Key');
+        if (!PUBLISH_KEY)           return error('Missing Publish Key');
+
+        if (!path || path.length == 0) {
+            var object_id_split = object_id.split('.');
+            object_id       = object_id_split.shift();
+            path            = object_id_split.join('.');
+        }
+
+        var url = [
+            STD_ORIGIN, 'v1', 'datasync','sub-key', SUBSCRIBE_KEY,
+             'pub-key', PUBLISH_KEY,'obj-id', encode(object_id)
+        ];
+
+        if (path) {
+            url['push'](encode(path['split'](".")['join']("/")));
+        }
+
+        if (jsonp != '0') { data['callback'] = jsonp; }
+
+        if (sort_key && sort_key.length > 0) data['sort_key'] = sort_key;
+
+        xdr({
+            callback : jsonp,
+            data     : _get_url_params(data),
+            body     : JSON['stringify'](content),
+            success  : function(response) {
+                _invoke_callback(response, callback, err);
+            },
+            fail     : function(response) {
+                _invoke_error(response, err);
+            },
+            url      : url,
+            mode  : mode
+        });
+    }
+    function remove(args, callback) {
+        var callback         = args['callback'] || args['success'] || callback
+        ,   err              = args['error']    || function(){}
+        ,   jsonp            = jsonp_cb()
+        ,   auth_key         = args['auth_key'] || AUTH_KEY
+        ,   data             = { 'uuid' : UUID, 'auth' : auth_key }
+        ,   object_id        = args['object_id']
+        ,   path             = args['path'];
+
+        // Make sure we have a Channel
+        if (!object_id)     return error('Missing Object Id');
+        if (!SUBSCRIBE_KEY) return error('Missing Subscribe Key');
+
+        var oid_split = object_id.split('.');
+        object_id = oid_split.shift();
+        if (!path) {
+            path = oid_split.join('.');
+        }
+
+        var url = [
+            STD_ORIGIN, 'v1', 'datasync','sub-key', SUBSCRIBE_KEY,
+             'pub-key', PUBLISH_KEY, 'obj-id', encode(object_id)
+        ];
+
+        if (path) {
+            url['push'](encodeURI(path['split'](".")['join']("/")));
+        }
+
+        if (jsonp != '0') { data['callback'] = jsonp; }
+
+        xdr({
+            callback : jsonp,
+            data     : _get_url_params(data),
+            success  : function(response) {
+                _invoke_callback(response, callback, err);
+            },
+            fail     : function(response) {
+                _invoke_error(response, err);
+            },
+            url      : url,
+            mode : 'DELETE'
+        });
+    }
+
+
+
+    function replace(args, callback) {
+        args['mode'] = 'PUT'
+        merge(args, callback);
+    }
+    function push(args, callback) {
+        args['mode'] = 'POST'
+        merge(args, callback);
+    }
+
+    function _get_callbacks_from_options(options) {
+        var callbacks = {
+            'success'   : function(r){},
+            'error'     : function(r){}
+        }
+        if (options) {
+            callbacks['success']    = options['success'] || options['callback'] || function(r){};
+            callbacks['error']      = options['error']   || function(r){};
+        }
+        return callbacks;
+    }
+
+    function _get_from_options(options, key) {
+
+        if (options) {
+            if (typeof key === 'object' && key[0]) {
+                for ( var k in key) {
+                    if (options[key[k]]) return options[key[k]];
+                }
+            }
+            else {
+                return options[key];
+            }
+        }
+        return null;
+    }
+
+    function _success(options) {
+        return _get_from_options(options, ['success', 'callback']);
+    }
+
+    function _error(options) {
+        return _get_from_options(options, 'error');
+    }
+
+    function _path(options, path) {
+        if (options) {
+            if (!isEmpty(path)) {
+                return (!isEmpty(options['path']))?path + '.' + options['path']:path;
+            } else {
+                return options['path'];
+            }
+        } else {
+            return path;
+        }
+    }
+
+    function get_wrapper(args, callback) {
+         var callback        = args['callback'] || args['success'] || callback
+        ,   err              = args['error']    || function(){}
+        ,   object_id        = args['object_id']
+        ,   path             = args['path']
+        ,   start_at         = args['start_at']
+        ,   obj_at           = args['obj_at']
+        ,   page_max_bytes   = args['page_max_bytes']
+        ,   jsonp            = jsonp_cb()
+        ,   auth_key         = args['auth_key'] || AUTH_KEY
+        ,   data             = { 'uuid' : UUID, 'auth' : auth_key };
+
+        // Make sure we have a Channel
+        if (!object_id)     return error('Missing Object Id');
+        if (!SUBSCRIBE_KEY) return error('Missing Subscribe Key');
+
+        var obj = null;
+        function read(start_at,callback, error) {
+            get({
+                'object_id' : object_id,
+                'path'      : path,
+                'start_at'  : start_at,
+                //'page_max_bytes' : 5,
+                'callback'  : function(r) {
+                    if (obj == null && typeof r['payload'] !== 'object') {
+                        callback && callback(r['payload']);
+                        return;
+                    }
+                    obj = mergeAtOneLevel(obj,r['payload']);
+                    if (!r['next_page'] || (r['next_page'] && r['next_page'] == "null")) {
+                        callback && callback(obj);
+                    } else {
+                        read(r['next_page'],callback, error);
+                    }
+
+                },
+                'error'     : error
+            })
+        }
+        read(null,callback, error);
     }
 
     // Announce Leave Event
@@ -1576,7 +1861,7 @@ function PN_API(setup) {
                 if (!SSL)         return false;
                 if (jsonp == '0') return false;
             }
-            
+
             if (NOLEAVE)  return false;
 
             if (jsonp != '0') data['callback'] = jsonp;
@@ -1646,7 +1931,7 @@ function PN_API(setup) {
                 k[x] = obj[k];
             }
             return x;
-        },        
+        },
         'newPnMessage' : function() {
             var x = {};
             if (gcm) x['pn_gcm'] = gcm;
@@ -1661,168 +1946,75 @@ function PN_API(setup) {
             params[key] = val;
         },
 
-        'snapshot' : function(args, callback) {
-            var snapshot_callback   = args['callback'] || args['success'] || callback
-            ,   err                 = args['error']    || function(){};
+        'snapshot' : function(object_id, success, error) {
+            var args = {'error' : error || function(){}};
+
+            var snapshot_callback   = success;
 
             args['callback'] = function(response){
                 var callback_data = {};
-                callback_data['data'] = response;
+                callback_data['data'] = JSON.parse(JSON.stringify(response),transform);
                 callback_data['value'] = function(path) {
                     return value(callback_data['data'], path);
                 }
                 snapshot_callback && snapshot_callback(callback_data);
             };
+            args['object_id'] = object_id;
 
-            SELF['get'](args);
+            get_wrapper(args);
         },
 
-        'get' : function(args, callback) {
-             var callback        = args['callback'] || args['success'] || callback
-            ,   err              = args['error']    || function(){}
-            ,   object_id        = args['object_id']
-            ,   path             = args['path']
-            ,   start_at         = args['start_at']
-            ,   obj_at           = args['obj_at']
-            ,   page_max_bytes   = args['page_max_bytes']
-            ,   jsonp            = jsonp_cb()
-            ,   auth_key         = args['auth_key'] || AUTH_KEY
-            ,   data             = { 'uuid' : UUID, 'auth' : auth_key };
+        'merge'  : function(object_id, data, success, error) {
 
-            // Make sure we have a Channel
-            if (!object_id)     return error('Missing Object Id');
-            if (!SUBSCRIBE_KEY) return error('Missing Subscribe Key');
+            merge({
+                'object_id' : object_id,
+                'data'      : data,
+                'callback'  : success,
+                'error'     : error
+            });
 
-            var obj = null;
-            function read(start_at,callback, error) {
-                get({
-                    'object_id' : object_id,
-                    'path'      : path,
-                    'start_at'  : start_at,
-                    //'page_max_bytes' : 5,
-                    'callback'  : function(r) {
-                        if (obj == null && typeof r['payload'] !== 'object') {
-                            callback && callback(r['payload']);
-                            return;
-                        }
-                        obj = mergeAtOneLevel(obj,r['payload']); 
-                        if (!r['next_page'] || (r['next_page'] && r['next_page'] == "null")) {
-                            callback && callback(obj);
-                        } else {
-                            read(r['next_page'],callback, error);
-                        }
-                        
-                    },
-                    'error'     : error
-                })
-            }
-            read(null,callback, error);
         },
-        'replace'   : function(args, callback) {
-            args['mode'] = 'PUT'
-            SELF['merge'](args);
-        },
-        'push'   : function(args, callback) {
-            args['mode'] = 'POST'
-            SELF['merge'](args);
-        },
-        'merge' : function(args, callback) {
-            var callback        = args['callback'] || args['success'] || callback
-            ,   err              = args['error']    || function(){}
-            ,   object_id        = args['object_id']
-            ,   content          = args['data']
-            ,   jsonp            = jsonp_cb()
-            ,   auth_key         = args['auth_key'] || AUTH_KEY
-            ,   sort_key         = args['sort_key']
-            //,   data             = { 'uuid' : UUID, 'auth' : auth_key, 'test_tr_only' : 1}
-            ,   data             = { 'uuid' : UUID, 'auth' : auth_key}
-            ,   mode             = args['mode'] || 'PATCH'
-            ,   path             = args['path'];
 
-            // Make sure we have a Channel
-            if (!object_id)             return error('Missing Object Id');
-            if (isNullOrUndef(content)) return error('Missing Data');
-            if (!SUBSCRIBE_KEY)         return error('Missing Subscribe Key');
-            if (!PUBLISH_KEY)           return error('Missing Publish Key');
+        'replace' : function(object_id, data, success, error) {
 
-            if (!path || path.length == 0) {
-                var object_id_split = object_id.split('.');
-                object_id       = object_id_split.shift();
-                path            = object_id_split.join('.');
-            }
-
-            var url = [
-                STD_ORIGIN, 'v1', 'datasync','sub-key', SUBSCRIBE_KEY,
-                 'pub-key', PUBLISH_KEY,'obj-id', encode(object_id)
-            ];
-
-            if (path) {
-                url['push'](encode(path['split'](".")['join']("/")));
-            }
-
-            if (jsonp != '0') { data['callback'] = jsonp; }
-
-            if (sort_key && sort_key.length > 0) data['sort_key'] = sort_key;
-
-            xdr({
-                callback : jsonp,
-                data     : _get_url_params(data),
-                body     : JSON['stringify'](content),
-                success  : function(response) {
-                    _invoke_callback(response, callback, err);
-                },
-                fail     : function(response) {
-                    _invoke_error(response, err);
-                },
-                url      : url,
-                mode  : mode
+            replace({
+                'object_id' : object_id,
+                'data'      : data,
+                'callback'  : success,
+                'error'     : error
             });
         },
-        'remove' : function(args, callback) {
-            var callback         = args['callback'] || args['success'] || callback
-            ,   err              = args['error']    || function(){}
-            ,   jsonp            = jsonp_cb()
-            ,   auth_key         = args['auth_key'] || AUTH_KEY
-            ,   data             = { 'uuid' : UUID, 'auth' : auth_key }
-            ,   object_id        = args['object_id']
-            ,   path             = args['path'];
 
-            // Make sure we have a Channel
-            if (!object_id)     return error('Missing Object Id');
-            if (!SUBSCRIBE_KEY) return error('Missing Subscribe Key');
-
-            var oid_split = object_id.split('.');
-            object_id = oid_split.shift();
-            if (!path) {
-                path = oid_split.join('.');
-            }
-
-            var url = [
-                STD_ORIGIN, 'v1', 'datasync','sub-key', SUBSCRIBE_KEY,
-                 'pub-key', PUBLISH_KEY, 'obj-id', encode(object_id)
-            ];
-            
-            if (path) {
-                url['push'](encodeURI(path['split'](".")['join']("/")));
-            }
-
-            if (jsonp != '0') { data['callback'] = jsonp; }
-
-            xdr({
-                callback : jsonp,
-                data     : _get_url_params(data),
-                success  : function(response) {
-                    _invoke_callback(response, callback, err);
-                },
-                fail     : function(response) {
-                    _invoke_error(response, err);
-                },
-                url      : url,
-                mode : 'DELETE'
+        'remove'  : function(object_id, success, error) {
+            remove({
+                'object_id' : object_id,
+                'callback'  : success,
+                'error'     : error
             });
         },
+
+        'push'    : function(object_id, data, success, error) {
+            merge({
+                'object_id' : object_id,
+                'data'      : data,
+                'callback'  : success,
+                'error'     : error,
+                'mode'      : 'POST'
+            });
+        },
+        'push_with_sort_key'    : function(object_id, data, sort_key, success, error) {
+            merge({
+                'object_id' : object_id,
+                'sort_key'  : sort_key,
+                'data'      : data,
+                'callback'  : success,
+                'error'     : error,
+                'mode'      : 'POST'
+            });
+        },
+
         /*
-            user facing sync method. returns a reference which can be used for 
+            user facing sync method. returns a reference which can be used for
             setting callbacks . also provides wrappers for merge, remvoe, replace
 
             This method takes location as input, location is a fully qualified name
@@ -1861,7 +2053,7 @@ function PN_API(setup) {
                     },
                     'merge'  : function(callback) {
                         set_callback(location, callback, 'merge');
-                    },  
+                    },
                     'replace'     : function(callback) {
                         set_callback(location, callback, 'replace');
                     },
@@ -1870,10 +2062,10 @@ function PN_API(setup) {
                     },
                     'error'   : function(callback) {
                         set_callback(location, callback, 'error');
-                    }, 
+                    },
                     'resync'   : function(callback) {
                         set_callback(location, callback, 'resync');
-                    }, 
+                    },
                     // network events
                     'network' : {
                         'connect'       : function(callback) {
@@ -1888,65 +2080,58 @@ function PN_API(setup) {
                     }
                 },
 
-                'merge'  : function(data, success, error) {
+                'merge'  : function(data, options) {
 
-                    SELF['merge']({
+                    merge({
                         'object_id' : object_id,
-                        'path'      : path,
+                        'path'      : _path(options,path),
                         'data'      : data,
-                        'callback'  : success,
-                        'error'     : error
+                        'callback'  : _success(options),
+                        'error'     : _error(options)
                     });
 
                 },
 
-                'replace' : function(data, success, error) {
-
-                    SELF['replace']({
+                'replace' : function(data, options) {
+                    replace({
                         'object_id' : object_id,
-                        'path'      : path,
+                        'path'      : _path(options,path),
                         'data'      : data,
-                        'callback'  : success,
-                        'error'     : error
+                        'callback'  : _success(options),
+                        'error'     : _error(options)
                     });
                 },
 
-                'remove'  : function(success, error) {
+                'remove'  : function(options) {
 
-                    SELF['remove']({
+                    remove({
                         'object_id' : object_id,
-                        'path'      : path,
-                        'callback'  : success,
-                        'error'     : error
+                        'path'      : _path(options,path),
+                        'callback'  : _success(options),
+                        'error'     : _error(options)
                     });
                 },
 
-                'push'    : function(data, success, error) {
-                    SELF['merge']({
+                'push'    : function(data, options) {
+
+                    var args = {
                         'object_id' : object_id,
-                        'path'      : path,
+                        'path'      : _path(options,path),
                         'data'      : data,
-                        'callback'  : success,
-                        'error'     : error,
+                        'callback'  : _success(options),
+                        'error'     : _error(options),
                         'mode'      : 'POST'
-                    });
-                },
-                'push_with_sort_key'    : function(data, sort_key, success, error) {
-                    SELF['merge']({
-                        'object_id' : object_id,
-                        'path'      : path,
-                        'sort_key'  : sort_key,
-                        'data'      : data,
-                        'callback'  : success,
-                        'error'     : error,
-                        'mode'      : 'POST'
-                    });
+                    };
+                    if (options && !isEmpty(options['sort_key'])) {
+                        args['sort_key'] = options['sort_key'];
+                    }
+                    merge(args);
                 }
 
             }
 
 
-            // prepare internal object 
+            // prepare internal object
 
         var so =  get_synced_object({
                     'object_id'  : object_id,
@@ -1957,10 +2142,10 @@ function PN_API(setup) {
                         if (r[0]) {
                             var action      = r[0]['action'];
                             var location    = r[0]['location'];
-                            var update_at   = r[0]['update_at'];
+                            var update_at   = r[0]['updateAt'];
                             var event_type  = '';
-                            
-                            
+
+
 
                             if (action === 'merge' || action === 'push') {              // update event
 
@@ -1973,7 +2158,7 @@ function PN_API(setup) {
                             }
 
                             else if (action === 'replace-delete' || action === 'replace') {     // set events
-                                
+
 
                                 event_type = 'replace';
 
@@ -1982,9 +2167,9 @@ function PN_API(setup) {
 
                             var callbacks           = _get_callbacks_with_location(location, event_type);
                             var callbacks_change    = _get_callbacks_with_location(location, 'change');
-                                
+
                             for (var callback_location in callbacks) {
-                                
+
                                 var callback = callbacks[callback_location];
 
                                 callback && callback(_get_callback_data(event_type, r, callback_location, path,update_at));
@@ -1999,13 +2184,13 @@ function PN_API(setup) {
                     },
                     'error' : function(r) {
                         var error = get_callback(location,'error');
-                        resync_all();
+                        //resync_all();
                         error && error(r);
                     },
                     'connect'    : function(r) {
                         var network_connect = get_callback(location, 'network.connect');
                         network_connect && network_connect(r);
-                        
+
                         for (var c in DS_CALLBACKS) {
                             if (c.indexOf(r + '.') == 0 || c === r) {
                                 var cbo = DS_CALLBACKS[c];
@@ -2022,31 +2207,47 @@ function PN_API(setup) {
                     },
                     'disconnect' : function(r) {
                         var network_disconnect = get_callback(location, 'network.disconnect');
-                        resync_all();
                         network_disconnect && network_disconnect(r)
-                    }    
-                    
+                    }
+
                 })
 
 
             var resync  = so[1];
-            internal    = so[0];
-            
+            internal    = _get_object_by_path(object_id,path);
+
             ref['resync'] = function() {
-                resync();
+                resync_all();
             };
 
+            if (isPnList(_get_object_by_path(object_id,path))) {
+                ref['each'] = function(callback) {
+                    internal = _get_object_by_path(object_id,path);
+                    if(!isPnList(internal)) {
+                        return null;
+                    }
+                    var keys = getObjectKeysSorted(internal);
+                    for (var key in keys) {
+                        callback && callback(SELF['sync'](location + '.' + keys[key]), keys[key]);
+                    }
+                };
+            }
 
             ref['value'] = function(path1) {
+                internal = _get_object_by_path(object_id,path);
+                return JSON.parse(JSON.stringify(value(internal,path1), transform) || null);
+            };
+
+            ref['location'] = function(path1) {
                 internal = _get_object_by_path(object_id,path);
                 return value(internal,path1);
             };
 
-            ref['get'] = function(path) {
+            ref['child'] = function(path) {
                 return SELF['sync'](location + '.' + path);
             };
 
-            ref['pop'] = function(success, error) {
+            ref['pop'] = function(options) {
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
@@ -2054,14 +2255,15 @@ function PN_API(setup) {
                 var keys = getObjectKeysSorted(internal);
                 var last_key = keys.pop();
 
-                SELF['remove']({
-                    'object_id' : location + '.' + key,
-                    'callback'  : success,
-                    'error'     : error
+                remove({
+                    'object_id' : location + '.' + last_key,
+                    'callback'  : _success(options),
+                    'error'     : _error(options)
                 });
                 return value(internal[last_key]);
             };
-            ref['removeByIndex'] = function(index, success, error) {
+            ref['removeByIndex'] = function(index, options) {
+
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
@@ -2069,10 +2271,10 @@ function PN_API(setup) {
                 var keys = getObjectKeysSorted(internal);
                 try {
                     var key = keys[index];
-                    SELF['remove']({
+                    remove({
                         'object_id' : location + '.' + key,
-                        'callback'  : success,
-                        'error'     : error
+                        'callback'  : _success(options),
+                        'error'     : _error(options)
                     });
                     return value(internal[key]);
                 } catch (e) {
@@ -2080,7 +2282,8 @@ function PN_API(setup) {
                 }
             };
 
-            ref['replaceByIndex'] = function(index, data, success, error) {
+            ref['replaceByIndex'] = function(index, value, options) {
+
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
@@ -2090,9 +2293,9 @@ function PN_API(setup) {
                     var key = keys[index];
                     SELF['replace']({
                         'object_id' : location + '.' + key,
-                        'data'      : data,
-                        'callback'  : success,
-                        'error'     : error
+                        'data'      : value,
+                        'callback'  : _success(options),
+                        'error'     : _error(options)
                     });
                     return value(internal[key]);
                 } catch (e) {
@@ -2100,20 +2303,20 @@ function PN_API(setup) {
                 }
             };
 
-            ref['removeByKey'] = function(key, success, error) {
+            ref['removeByKey'] = function(key, options) {
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
                 }
-                SELF['remove']({
+                remove({
                     'object_id' : location + '.' + key,
-                    'callback'  : success,
-                    'error'     : error
+                    'callback'  : _success(options),
+                    'error'     : _error(options)
                 });
                 return value(internal[key]);
 
             };
-            ref['replaceByKey'] = function(key, data, success, error) {
+            ref['replaceByKey'] = function(key, data, options) {
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
@@ -2121,26 +2324,27 @@ function PN_API(setup) {
                 SELF['replace']({
                     'object_id' : location + '.' + key,
                     'data'      : data,
-                    'callback'  : success,
-                    'error'     : error
+                    'callback'  : _success(options),
+                    'error'     : _error(options)
                 });
                 return value(internal[key]);
 
             };
-            ref['removeByValue'] = function(val, success, error) {
+            ref['removeByValue'] = function(val, options) {
+                
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
                 }
-                
+
                 var key = getKeyByValue(internal, val);
-                
+
                 if (!key) return null;
-                
-                SELF['remove']({
+
+                remove({
                     'object_id' : location + '.' + key,
-                    'callback'  : success,
-                    'error'     : error
+                    'callback'  : _success(options),
+                    'error'     : _error(options)
                 });
                 return value(internal[key]);
 
@@ -2153,21 +2357,22 @@ function PN_API(setup) {
                 return getKeyByValue(internal, val);
 
             };
-            
-            ref['replaceByValue'] = function(val, data, success, error) {
+
+            ref['replaceByValue'] = function(val, value_replace, options) {
+
                 internal = _get_object_by_path(object_id,path);
                 if(!isPnList(internal)) {
                     return null;
                 }
                 var key = getKeyByValue(internal, val);
-                
+
                 if (!key) return null;
 
-                SELF['remove']({
+                remove({
                     'object_id' : location + '.' + key,
-                    'data'      : data,
-                    'callback'  : success,
-                    'error'     : error
+                    'data'      : value_replace,
+                    'callback'  : _success(options),
+                    'error'     : _error(options)
                 });
                 return value(internal[key]);
 
@@ -2320,7 +2525,7 @@ function PN_API(setup) {
             PUBNUB.time(function(time){ });
         */
         'time' : function(callback) {
-            
+
             var jsonp = jsonp_cb();
             xdr({
                 callback : jsonp,
@@ -2330,7 +2535,7 @@ function PN_API(setup) {
                 success  : function(response) { callback(response[0]) },
                 fail     : function() { callback(0) }
             });
-            
+
         },
 
         /*
@@ -2362,7 +2567,7 @@ function PN_API(setup) {
 
             if (msg['getPubnubMessage']) {
                 msg = msg['getPubnubMessage']();
-            } 
+            }
 
             // If trying to send Object
             msg = JSON['stringify'](encrypt(msg, cipher_key));
@@ -2660,7 +2865,7 @@ function PN_API(setup) {
                                     .join(',').split(','),
                                     function() { return chan; }
                                 ) }).join(',');
-                            }   
+                            }
                             var list = channels.split(',');
 
                             return function() {
@@ -2933,12 +3138,12 @@ function PN_API(setup) {
             if (jsonp != '0') { data['callback'] = jsonp; }
             if (channel != 'undefined' && channel != null && channel.length > 0) data['channel'] = channel;
             if (obj_id != 'undefined' && obj_id != null && obj_id.length > 0) data['obj-id'] = obj_id;
-            if (auth_key) data['auth']    = auth_key;    
+            if (auth_key) data['auth']    = auth_key;
 
             data = _get_url_params(data)
-            
+
             if (!auth_key) delete data['auth'];
-            
+
             sign_input += _get_pam_sign_input_from_params(data);
 
             var signature = hmac_SHA256( sign_input, SECRET_KEY );
@@ -2995,7 +3200,7 @@ function PN_API(setup) {
             if (PRESENCE_HB > 0 && PRESENCE_HB < 320) data['heartbeat'] = PRESENCE_HB;
 
             if (jsonp != '0') { data['callback'] = jsonp; }
-            
+
             xdr({
                 callback : jsonp,
                 data     : _get_url_params(data),
@@ -4512,7 +4717,7 @@ function ajax( setup ) {
     ,   fail     = setup.fail    || function(){}
     ,   data     = setup.data    || {}
     ,   success  = setup.success || function(){}
-    ,   method   = setup.mode  || 'GET' 
+    ,   method   = setup.mode  || 'GET'
     ,   async    = !(setup.blocking)
     ,   done     = function(failed,response) {
             if (complete) return;
@@ -4544,6 +4749,7 @@ function ajax( setup ) {
                     case 401:
                     case 402:
                     case 403:
+                    case 500:
                         try {
                             response = JSON['parse'](xhr.responseText);
                             done(1,response);
@@ -4825,3 +5031,29 @@ WS.prototype.close = function() {
 };
 
 })();
+/*
+CryptoJS v3.1.2
+code.google.com/p/crypto-js
+(c) 2009-2013 by Jeff Mott. All rights reserved.
+code.google.com/p/crypto-js/wiki/License
+*/
+var CryptoJS=CryptoJS||function(h,s){var f={},g=f.lib={},q=function(){},m=g.Base={extend:function(a){q.prototype=this;var c=new q;a&&c.mixIn(a);c.hasOwnProperty("init")||(c.init=function(){c.$super.init.apply(this,arguments)});c.init.prototype=c;c.$super=this;return c},create:function(){var a=this.extend();a.init.apply(a,arguments);return a},init:function(){},mixIn:function(a){for(var c in a)a.hasOwnProperty(c)&&(this[c]=a[c]);a.hasOwnProperty("toString")&&(this.toString=a.toString)},clone:function(){return this.init.prototype.extend(this)}},
+r=g.WordArray=m.extend({init:function(a,c){a=this.words=a||[];this.sigBytes=c!=s?c:4*a.length},toString:function(a){return(a||k).stringify(this)},concat:function(a){var c=this.words,d=a.words,b=this.sigBytes;a=a.sigBytes;this.clamp();if(b%4)for(var e=0;e<a;e++)c[b+e>>>2]|=(d[e>>>2]>>>24-8*(e%4)&255)<<24-8*((b+e)%4);else if(65535<d.length)for(e=0;e<a;e+=4)c[b+e>>>2]=d[e>>>2];else c.push.apply(c,d);this.sigBytes+=a;return this},clamp:function(){var a=this.words,c=this.sigBytes;a[c>>>2]&=4294967295<<
+32-8*(c%4);a.length=h.ceil(c/4)},clone:function(){var a=m.clone.call(this);a.words=this.words.slice(0);return a},random:function(a){for(var c=[],d=0;d<a;d+=4)c.push(4294967296*h.random()|0);return new r.init(c,a)}}),l=f.enc={},k=l.Hex={stringify:function(a){var c=a.words;a=a.sigBytes;for(var d=[],b=0;b<a;b++){var e=c[b>>>2]>>>24-8*(b%4)&255;d.push((e>>>4).toString(16));d.push((e&15).toString(16))}return d.join("")},parse:function(a){for(var c=a.length,d=[],b=0;b<c;b+=2)d[b>>>3]|=parseInt(a.substr(b,
+2),16)<<24-4*(b%8);return new r.init(d,c/2)}},n=l.Latin1={stringify:function(a){var c=a.words;a=a.sigBytes;for(var d=[],b=0;b<a;b++)d.push(String.fromCharCode(c[b>>>2]>>>24-8*(b%4)&255));return d.join("")},parse:function(a){for(var c=a.length,d=[],b=0;b<c;b++)d[b>>>2]|=(a.charCodeAt(b)&255)<<24-8*(b%4);return new r.init(d,c)}},j=l.Utf8={stringify:function(a){try{return decodeURIComponent(escape(n.stringify(a)))}catch(c){throw Error("Malformed UTF-8 data");}},parse:function(a){return n.parse(unescape(encodeURIComponent(a)))}},
+u=g.BufferedBlockAlgorithm=m.extend({reset:function(){this._data=new r.init;this._nDataBytes=0},_append:function(a){"string"==typeof a&&(a=j.parse(a));this._data.concat(a);this._nDataBytes+=a.sigBytes},_process:function(a){var c=this._data,d=c.words,b=c.sigBytes,e=this.blockSize,f=b/(4*e),f=a?h.ceil(f):h.max((f|0)-this._minBufferSize,0);a=f*e;b=h.min(4*a,b);if(a){for(var g=0;g<a;g+=e)this._doProcessBlock(d,g);g=d.splice(0,a);c.sigBytes-=b}return new r.init(g,b)},clone:function(){var a=m.clone.call(this);
+a._data=this._data.clone();return a},_minBufferSize:0});g.Hasher=u.extend({cfg:m.extend(),init:function(a){this.cfg=this.cfg.extend(a);this.reset()},reset:function(){u.reset.call(this);this._doReset()},update:function(a){this._append(a);this._process();return this},finalize:function(a){a&&this._append(a);return this._doFinalize()},blockSize:16,_createHelper:function(a){return function(c,d){return(new a.init(d)).finalize(c)}},_createHmacHelper:function(a){return function(c,d){return(new t.HMAC.init(a,
+d)).finalize(c)}}});var t=f.algo={};return f}(Math);
+(function(h){for(var s=CryptoJS,f=s.lib,g=f.WordArray,q=f.Hasher,f=s.algo,m=[],r=[],l=function(a){return 4294967296*(a-(a|0))|0},k=2,n=0;64>n;){var j;a:{j=k;for(var u=h.sqrt(j),t=2;t<=u;t++)if(!(j%t)){j=!1;break a}j=!0}j&&(8>n&&(m[n]=l(h.pow(k,0.5))),r[n]=l(h.pow(k,1/3)),n++);k++}var a=[],f=f.SHA256=q.extend({_doReset:function(){this._hash=new g.init(m.slice(0))},_doProcessBlock:function(c,d){for(var b=this._hash.words,e=b[0],f=b[1],g=b[2],j=b[3],h=b[4],m=b[5],n=b[6],q=b[7],p=0;64>p;p++){if(16>p)a[p]=
+c[d+p]|0;else{var k=a[p-15],l=a[p-2];a[p]=((k<<25|k>>>7)^(k<<14|k>>>18)^k>>>3)+a[p-7]+((l<<15|l>>>17)^(l<<13|l>>>19)^l>>>10)+a[p-16]}k=q+((h<<26|h>>>6)^(h<<21|h>>>11)^(h<<7|h>>>25))+(h&m^~h&n)+r[p]+a[p];l=((e<<30|e>>>2)^(e<<19|e>>>13)^(e<<10|e>>>22))+(e&f^e&g^f&g);q=n;n=m;m=h;h=j+k|0;j=g;g=f;f=e;e=k+l|0}b[0]=b[0]+e|0;b[1]=b[1]+f|0;b[2]=b[2]+g|0;b[3]=b[3]+j|0;b[4]=b[4]+h|0;b[5]=b[5]+m|0;b[6]=b[6]+n|0;b[7]=b[7]+q|0},_doFinalize:function(){var a=this._data,d=a.words,b=8*this._nDataBytes,e=8*a.sigBytes;
+d[e>>>5]|=128<<24-e%32;d[(e+64>>>9<<4)+14]=h.floor(b/4294967296);d[(e+64>>>9<<4)+15]=b;a.sigBytes=4*d.length;this._process();return this._hash},clone:function(){var a=q.clone.call(this);a._hash=this._hash.clone();return a}});s.SHA256=q._createHelper(f);s.HmacSHA256=q._createHmacHelper(f)})(Math);
+(function(){var h=CryptoJS,s=h.enc.Utf8;h.algo.HMAC=h.lib.Base.extend({init:function(f,g){f=this._hasher=new f.init;"string"==typeof g&&(g=s.parse(g));var h=f.blockSize,m=4*h;g.sigBytes>m&&(g=f.finalize(g));g.clamp();for(var r=this._oKey=g.clone(),l=this._iKey=g.clone(),k=r.words,n=l.words,j=0;j<h;j++)k[j]^=1549556828,n[j]^=909522486;r.sigBytes=l.sigBytes=m;this.reset()},reset:function(){var f=this._hasher;f.reset();f.update(this._iKey)},update:function(f){this._hasher.update(f);return this},finalize:function(f){var g=
+this._hasher;f=g.finalize(f);g.reset();return g.finalize(this._oKey.clone().concat(f))}})})();
+/*
+CryptoJS v3.1.2
+code.google.com/p/crypto-js
+(c) 2009-2013 by Jeff Mott. All rights reserved.
+code.google.com/p/crypto-js/wiki/License
+*/
+(function(){var h=CryptoJS,j=h.lib.WordArray;h.enc.Base64={stringify:function(b){var e=b.words,f=b.sigBytes,c=this._map;b.clamp();b=[];for(var a=0;a<f;a+=3)for(var d=(e[a>>>2]>>>24-8*(a%4)&255)<<16|(e[a+1>>>2]>>>24-8*((a+1)%4)&255)<<8|e[a+2>>>2]>>>24-8*((a+2)%4)&255,g=0;4>g&&a+0.75*g<f;g++)b.push(c.charAt(d>>>6*(3-g)&63));if(e=c.charAt(64))for(;b.length%4;)b.push(e);return b.join("")},parse:function(b){var e=b.length,f=this._map,c=f.charAt(64);c&&(c=b.indexOf(c),-1!=c&&(e=c));for(var c=[],a=0,d=0;d<
+e;d++)if(d%4){var g=f.indexOf(b.charAt(d-1))<<2*(d%4),h=f.indexOf(b.charAt(d))>>>6-2*(d%4);c[a>>>2]|=(g|h)<<24-8*(a%4);a++}return j.create(c,a)},_map:"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="}})();
