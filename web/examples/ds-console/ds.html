@@ -5,9 +5,10 @@
 <script>
 
 var pubnub = PUBNUB.init({
-    write_key: "pub-c-bf446f9e-dd7f-43fe-8736-d6e5dce3fe67",
-    read_key: "sub-c-d1c2cc5a-1102-11e4-8880-02ee2ddab7fe",
-    origin: "dara25.devbuild.pubnub.com"
+    write_key: "pub-c-d787ce04-a1b7-48a3-801e-58474256abcf",
+    read_key: "sub-c-a70d8cd4-7034-11e4-aed7-0693d8625082",
+    origin: "pubsub.pubnub.com",
+    auth_key : "abcd"
 });
 
 function sync(location) {
@@ -52,5 +53,8 @@ function sync(location) {
     return x;
 }
 
+pubnub.merge("ad", {"a":"n"}, function(r){console.log(JSON.stringify(r))}, function(r){console.log(JSON.stringify(r))});
 
+
+pubnub.snapshot("ad.a", function(r){console.log(JSON.stringify(r))}, function(r){console.log(JSON.stringify(r))});
 </script>
