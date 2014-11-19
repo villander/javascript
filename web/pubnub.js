@@ -611,8 +611,8 @@ function PN_API(setup) {
                 if (response['payload']) {
                     callback_data['payload'] = response['payload'];
                 }
-                
-                err(callback_data);
+
+                err && err(callback_data);
                 return;
 
             }
@@ -628,9 +628,20 @@ function PN_API(setup) {
     }
 
     function _invoke_error(response,err) {
-        if (typeof response == 'object' && response['error'] &&
-            response['message'] && response['payload']) {
-            err && err({'message' : response['message'], 'payload' : response['payload']});
+
+        if (typeof response == 'object' && response['error']) {
+                var callback_data = {};
+
+                if (response['message']) {
+                    callback_data['message'] = response['message'];
+                }
+
+                if (response['payload']) {
+                    callback_data['payload'] = response['payload'];
+                }
+                
+                err && err(callback_data);
+                return;
         } else {
             err && err(response);
         }
@@ -1757,8 +1768,9 @@ function PN_API(setup) {
     }
 
     function _get_from_options(options, key) {
+
         if (options) {
-            if (isArray(key)) {
+            if (typeof key === 'object' && key[0]) {
                 for ( var k in key) {
                     if (options[key[k]]) return options[key[k]];
                 }
@@ -1771,11 +1783,11 @@ function PN_API(setup) {
     }
 
     function _success(options) {
-        return _get_from_options(options, ['success', 'callback']) || function(r){};
+        return _get_from_options(options, ['success', 'callback']);
     }
 
     function _error(options) {
-        return _get_from_options(options, 'error') || function(r){};
+        return _get_from_options(options, 'error');
     }
 
     function _path(options, path) {
@@ -2081,7 +2093,6 @@ function PN_API(setup) {
                 },
 
                 'replace' : function(data, options) {
-
                     replace({
                         'object_id' : object_id,
                         'path'      : _path(options,path),
@@ -4738,6 +4749,7 @@ function ajax( setup ) {
                     case 401:
                     case 402:
                     case 403:
+                    case 500:
                         try {
                             response = JSON['parse'](xhr.responseText);
                             done(1,response);

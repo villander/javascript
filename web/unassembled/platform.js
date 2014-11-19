@@ -310,6 +310,7 @@ function ajax( setup ) {
                     case 401:
                     case 402:
                     case 403:
+                    case 500:
                         try {
                             response = JSON['parse'](xhr.responseText);
                             done(1,response);
