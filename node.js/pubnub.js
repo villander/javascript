@@ -2048,7 +2048,7 @@ function PN_API(setup) {
                 resync_all();
             };
 
-            if (isPnList(internal)) {
+            if (isPnList(_get_object_by_path(object_id,path))) {
                 ref['each'] = function(callback) {
                     internal = _get_object_by_path(object_id,path);
                     if(!isPnList(internal)) {
@@ -2062,6 +2062,11 @@ function PN_API(setup) {
             }
 
             ref['value'] = function(path1) {
+                internal = _get_object_by_path(object_id,path);
+                return JSON.parse(JSON.stringify(value(internal,path1), transform) || null);
+            };
+
+            ref['location'] = function(path1) {
                 internal = _get_object_by_path(object_id,path);
                 return value(internal,path1);
             };
