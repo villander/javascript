@@ -1971,7 +1971,7 @@ function PN_API(setup) {
                         'error'     : _error(options),
                         'mode'      : 'POST'
                     };
-                    if (!isEmpty(options['sort_key'])) {
+                    if (options && !isEmpty(options['sort_key'])) {
                         args['sort_key'] = options['sort_key'];
                     }
                     merge(args);

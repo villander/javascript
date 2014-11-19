@@ -443,7 +443,6 @@ describe('Pubnub', function() {
                             pubnub_enc.publish({channel: history_channel,
                                 message : message_string + '-1',
                                 callback : function(response){
-                                    console.log(JSON.stringify(response));
                                     assert.deepEqual(response[0], 1);
                                     pubnub_enc.publish({channel: history_channel,
                                         message : message_string + '-2',
