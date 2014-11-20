@@ -1121,6 +1121,7 @@ function PN_API(setup) {
             'timetoken' : timetoken,
             'next_page'  : next_page,
             'callback'  : function(r) {
+
                 var location = object_id;
                 var last_node_key = object_id;
                 if (path && path.length) {
@@ -1130,7 +1131,7 @@ function PN_API(setup) {
 
                 var next_page = r['next_page'];
 
-                var payload = r['payload'];
+                var payload = r['payload']['data'];
 
                 var parent = _get_parent_by_path_with_create(OBJECTS,location);
 
@@ -1827,10 +1828,10 @@ function PN_API(setup) {
                 //'page_max_bytes' : 5,
                 'callback'  : function(r) {
                     if (obj == null && typeof r['payload'] !== 'object') {
-                        callback && callback(r['payload']);
+                        callback && callback(r['payload']['data']);
                         return;
                     }
-                    obj = mergeAtOneLevel(obj,r['payload']);
+                    obj = mergeAtOneLevel(obj,r['payload']['data']);
                     if (!r['next_page'] || (r['next_page'] && r['next_page'] == "null")) {
                         callback && callback(obj);
                     } else {
