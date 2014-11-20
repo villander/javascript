@@ -1,4 +1,4 @@
-// Version: 3.6.7
+// Version: ds-beta-1.0
 var NOW             = 1
 ,   READY           = false
 ,   READY_BUFFER    = []
@@ -12,7 +12,7 @@ var NOW             = 1
 ,   PARAMSBIT       = '&'
 ,   PRESENCE_HB_THRESHOLD = 5
 ,   PRESENCE_HB_DEFAULT  = 30
-,   SDK_VER         = '3.6.7'
+,   SDK_VER         = 'ds-beta-1.0'
 ,   REPL            = /{([\w\-]+)}/g;
 
 DEBUG = 0;
@@ -4322,7 +4322,7 @@ THE SOFTWARE.
  * UTIL LOCALS
  */
 var NOW        = 1
-,    PNSDK      = 'PubNub-JS-' + 'Phonegap' + '/' + '3.6.7'
+,    PNSDK      = 'PubNub-JS-' + 'Phonegap' + '/' + 'ds-beta-1.0'
 ,   XHRTME     = 310000;
 
 
