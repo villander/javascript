@@ -155,6 +155,7 @@ function xdr( setup ) {
                     case 403:
                     case 500:
                         try {
+                            //console.log(body);
                             response = JSON['parse'](body);
                             done(1,response);
                         }

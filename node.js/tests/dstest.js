@@ -2,9 +2,18 @@ var assert = require('assert');
 var PUBNUB = require('../pubnub.js');
 
 var pubnub = PUBNUB({
-    write_key     : "pub-c-bf446f9e-dd7f-43fe-8736-d6e5dce3fe67",
-    read_key      : "sub-c-d1c2cc5a-1102-11e4-8880-02ee2ddab7fe",
+    write_key     : "ds",
+    read_key      : "ds",
     origin        : "pubsub.pubnub.com",
+    build_u       : true
+});
+
+var pubnub_pam = PUBNUB({
+    write_key     : "ds-pam",
+    read_key      : "ds-pam",
+    secret_key    : "ds-pam",
+    origin        : "pubsub.pubnub.com",
+    auth_key      : 'abcd',
     build_u       : true
 });
 
@@ -33,12 +42,66 @@ function in_list(list,str) {
  }
 
 function pn_random(){
-    return Math.floor((Math.random() * 100000000000000000000) + 1);
+    return '' + Math.floor((Math.random() * 100000000000000000000) + 1);
 }
 
 describe('Pubnub', function() {
 
     this.timeout(40000);
+    describe("#PAM", function(){
+        describe("grant()", function(){
+            it("should be able to grant permission on object", function(done) {
+                var object_id = pn_random();
+                pubnub_pam.grant({
+                    'object_id' : object_id,
+                    'read'      : true,
+                    'write'     : true,
+                    'auth_key'  : 'abcd',
+                    'success'   : function(r) {
+                        pubnub_pam.merge(object_id + '.a', "abcd", function(r){
+                            assert.ok(true);
+                            pubnub_pam.replace(object_id + '.a', "abcd", function(r){
+                                assert.ok(true);
+                                pubnub_pam.remove(object_id + '.a', function(r){
+                                    assert.ok(true);
+                                    done();
+                                })
+                            })
+                        })
+                    },
+                    'error'     : function(r) {
+                        assert.ok(false);
+                        done();
+                    }
+                })
+            })
+        })
+        describe("revoke()", function(){
+            it("should be able to revoke permission on object", function(done) {
+                var object_id = pn_random();
+                pubnub_pam.revoke({
+                    'object_id' : object_id,
+                    'success'   : function(r) {
+                        pubnub_pam.merge(object_id + '.a', "abcd", null, function(r){
+                            assert.ok(true);
+                            pubnub_pam.replace(object_id + '.a', "abcd", null, function(r){
+                                assert.ok(true);
+                                pubnub_pam.remove(object_id + '.a', null, function(r){
+                                    assert.ok(true);
+                                    done();
+                                })
+                            })
+                        })
+                    },
+                    'error'     : function(r) {
+                        assert.ok(false);
+                        done();
+                    }
+                })
+            })
+        }) 
+    })
+
     describe('#each()', function(){
         it("should be able to iterate over a list", function(done) {
             var seed                 = pn_random() + '-ready-';
@@ -159,6 +222,57 @@ describe('Pubnub', function() {
                     done();
                 });
             })
+
+            it('should get invoked when sync reference ready with PAM enabled and access granted', function(done){
+                var seed = pn_random();
+                pubnub_pam.grant({
+                    'object_id' : seed + 'a',
+                    'read'      : true,
+                    'write'     : true,
+                    'auth_key'  : 'abcd',
+                    'success'   : function(r) {
+                        var ref = pubnub_pam.sync(seed + 'a.b');
+                        ref.on.ready(function(r){
+                            assert.ok(true,"Ready should be called");
+                            ref.on.ready();
+                            done();
+                        });
+                    },
+                    'error'     : function(r) {
+                        assert.ok(false);
+                        done();
+                    }
+                })
+
+            })
+
+            it('should not get invoked when sync reference ready with PAM enabled and access revoked', function(done){
+                var seed = pn_random();
+                pubnub_pam.grant({
+                    'object_id' : seed + 'a',
+                    'read'      : false,
+                    'write'     : false,
+                    'auth_key'  : 'abcd',
+                    'success'   : function(r) {
+                        var ref = pubnub_pam.sync(seed + 'a.b');
+                        ref.on.ready(function(r){
+                            assert.ok(false,"Ready should not be called");
+                            ref.on.ready();
+                            done();
+                        });
+                    },
+                    'error'     : function(r) {
+                        assert.ok(false);
+                        done();
+                    }
+                })
+                setTimeout(function(){
+                    assert.ok(true);
+                    done();
+                }, 15000);
+
+            })
+
             it('should get invoked on sync reference ready, when we are already listening to parent location', function(done){
                 var ref1 = pubnub.sync(seed + 'a.b.c');
                 var ref2 = pubnub.sync(seed + 'a.b.c.d.e.f');
@@ -168,6 +282,65 @@ describe('Pubnub', function() {
                     done();
                 });
             })
+
+            it('should get invoked on sync reference ready, when we are already listening to parent location with PAM enabled and access granted', function(done){
+                var seed = pn_random();
+                
+                var ref = pubnub_pam.sync('x');
+                ref.on.error(function(r){
+                    pubnub_pam.remove_object_id(r.payload.objects);
+                })
+
+                pubnub_pam.grant({
+                    'object_id' : seed + 'a',
+                    'read'      : true,
+                    'write'     : true,
+                    'auth_key'  : 'abcd',
+                    'success'   : function(r) {
+
+                        var ref1 = pubnub_pam.sync(seed + 'a.b.c');
+                        var ref2 = pubnub_pam.sync(seed + 'a.b.c.d.e.f');
+                        ref2.on.ready(function(r){
+                            assert.ok(true,"Ready should be called");
+                            ref2.on.ready();
+                            done();
+                        });
+
+                    },
+                    'error'     : function(r) {
+                        assert.ok(false);
+                        done();
+                    }
+                })
+            })
+            it('should not get invoked on sync reference ready, when we are already listening to parent location with PAM enabled and access revoked', function(done){
+                var seed = pn_random();
+                pubnub_pam.grant({
+                    'object_id' : seed + 'a',
+                    'read'      : false,
+                    'write'     : false,
+                    'auth_key'  : 'abcd',
+                    'success'   : function(r) {
+                        var ref1 = pubnub_pam.sync(seed + 'a.b.c');
+                        var ref2 = pubnub_pam.sync(seed + 'a.b.c.d.e.f');
+                        ref2.on.ready(function(r){
+                            assert.ok(false,"Ready should not be called");
+                            ref2.on.ready();
+                            done();
+                        });
+                    },
+                    'error'     : function(r) {
+                        assert.ok(false);
+                        done();
+                    }
+                })
+                setTimeout(function(){
+                    assert.ok(true);
+                    done();
+                }, 15000);
+            })
+
+
             it('should get invoked on sync reference ready, when we are already listening to parent location and child references were created using get', function(done){
                 var ref1 = pubnub.sync(seed + 'x.y.z');
                 var ref2 = ref1.child('x1.y1.z1');
@@ -178,6 +351,8 @@ describe('Pubnub', function() {
                     done();
                 });
             })
+
+
             it("should be invoked properly when listening at multiple locations in same tree", function(done) {
                 var done_count = 6;
                 var seed = pn_random() + '-ready-';

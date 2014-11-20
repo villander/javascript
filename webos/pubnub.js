@@ -925,8 +925,27 @@ function PN_API(setup) {
         return o;
     }
 
+    function _get_channel_list_for_unsubscribe(object_id) {
+        var object_ids = [];
+        object_ids = object_ids.concat(object_id);
+        var channels = [];
+
+         for (var channel in DS_CHANNELS) {
+            for (var o in object_ids) {
+                var obj_id = object_ids[o];
+                if (channel.split('.')[0]  == obj_id) {
+                    channels.push('pn_ds_' + channel);
+                    channels.push('pn_ds_'  + channel + '.*');
+                    channels.push('pn_dstr_' + channel.split('.')[0]);
+                }
+            }
+         }
+         return channels;
+    }
+
     function _get_channels_for_subscribe() {
         var channels = "";
+
          for (var dsc in DS_CHANNELS) {
             if (DS_CHANNELS[dsc]) {
                 if (channels.length > 0) channels += ',';
@@ -1232,8 +1251,9 @@ function PN_API(setup) {
 
                 //error
                 if (r && r['message']) errobj['message'] = r['message'];
+                if (r && r['payload']) errobj['payload'] = r['payload'];
 
-                err(errobj);
+                err(r);
 
             },
             'disconnect'       : function(r) {
@@ -1863,7 +1883,9 @@ function PN_API(setup) {
                 'mode'      : 'POST'
             });
         },
-
+        'remove_object_id' : function(object_id) {
+            SELF['unsubscribe']({'channel' : _get_channel_list_for_unsubscribe(object_id)});
+        },
         /*
             user facing sync method. returns a reference which can be used for
             setting callbacks . also provides wrappers for merge, remvoe, replace
@@ -2034,9 +2056,27 @@ function PN_API(setup) {
                         }
                     },
                     'error' : function(r) {
-                        var error = get_callback(location,'error');
+                        if (r && r['payload'] && r['payload']['channels']) {
+                            var objects = [];
+                            var channels = r['payload']['channels'];
+                            for (var ch in channels) {
+                                var channel = channels[ch];
+                                channel = channel.split('.*')[0];
+                                objects.push(
+                                    channel.split('pn_dstr_')[1] ||
+                                    channel.split('pn_ds_')[1]
+                                );
+                            }
+                            r['payload']['objects'] = objects;
+                            delete r['payload']['channels'];
+                        }
+                        var errors = _get_all_callbacks('error');
                         //resync_all();
-                        error && error(r);
+                        for(var e in errors) {
+                            var error  = errors[e];
+                            error && error(r);
+                        }
+                        
                     },
                     'connect'    : function(r) {
                         var network_connect = get_callback(location, 'network.connect');
@@ -2466,7 +2506,6 @@ function PN_API(setup) {
             var channel = args['channel']
             ,   callback      = callback            || args['callback'] || function(){}
             ,   err           = args['error']       || function(){};
-
             TIMETOKEN   = 0;
             //SUB_RESTORE = 1;    REVISIT !!!!
 
