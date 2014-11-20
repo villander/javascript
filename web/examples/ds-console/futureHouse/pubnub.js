@@ -1,4 +1,4 @@
-// Version: 3.6.7
+// Version: ds-beta-1.0
 /* =-====================================================================-= */
 /* =-====================================================================-= */
 /* =-=========================     JSON     =============================-= */
@@ -162,7 +162,7 @@ var NOW             = 1
 ,   PARAMSBIT       = '&'
 ,   PRESENCE_HB_THRESHOLD = 5
 ,   PRESENCE_HB_DEFAULT  = 30
-,   SDK_VER         = '3.6.7'
+,   SDK_VER         = 'ds-beta-1.0'
 ,   REPL            = /{([\w\-]+)}/g;
 
 DEBUG = 0;
@@ -1121,6 +1121,7 @@ function PN_API(setup) {
             'timetoken' : timetoken,
             'next_page'  : next_page,
             'callback'  : function(r) {
+
                 var location = object_id;
                 var last_node_key = object_id;
                 if (path && path.length) {
@@ -1130,7 +1131,7 @@ function PN_API(setup) {
 
                 var next_page = r['next_page'];
 
-                var payload = r['payload'];
+                var payload = r['payload']['data'];
 
                 var parent = _get_parent_by_path_with_create(OBJECTS,location);
 
@@ -1827,10 +1828,10 @@ function PN_API(setup) {
                 //'page_max_bytes' : 5,
                 'callback'  : function(r) {
                     if (obj == null && typeof r['payload'] !== 'object') {
-                        callback && callback(r['payload']);
+                        callback && callback(r['payload']['data']);
                         return;
                     }
-                    obj = mergeAtOneLevel(obj,r['payload']);
+                    obj = mergeAtOneLevel(obj,r['payload']['data']);
                     if (!r['next_page'] || (r['next_page'] && r['next_page'] == "null")) {
                         callback && callback(obj);
                     } else {
@@ -4452,7 +4453,7 @@ window['PUBNUB'] || (function() {
 var SWF             = 'https://pubnub.a.ssl.fastly.net/pubnub.swf'
 ,   ASYNC           = 'async'
 ,   UA              = navigator.userAgent
-,   PNSDK           = 'PubNub-JS-' + 'Web' + '/' + '3.6.7'
+,   PNSDK           = 'PubNub-JS-' + 'Web' + '/' + 'ds-beta-1.0'
 ,   XORIGN          = UA.indexOf('MSIE 6') == -1;
 
 /**
