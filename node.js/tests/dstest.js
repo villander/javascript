@@ -523,7 +523,7 @@ describe('Pubnub', function() {
                 });
 
                 ref.on.remove(function(r){
-                    assert.deepEqual(r.value(),{});
+                    assert.deepEqual(r.value(),null);
                     assert.ok(true,"remove should be called");
                     ref.replace(seed + 3);
                     ref.on.remove();
@@ -693,7 +693,7 @@ describe('Pubnub', function() {
                     assert.ok(true,"Merge should be called");
                     ref.on.merge();
                     ref.on.remove(function(r){
-                        assert.deepEqual(r.value(),{});
+                        assert.deepEqual(r.value(),null);
                         assert.ok(true,"Remove should be called");
                         ref.on.remove();
                         done();
@@ -899,7 +899,7 @@ describe('Pubnub', function() {
                     assert.ok(true,"Merge should be called");
                     ref.on.merge();
                     ref.on.change(function(r){
-                        assert.deepEqual(r.value(),{});
+                        assert.deepEqual(r.value(), null);
                         assert.ok(true,"Change should be called");
                         ref.on.change();
                         done();

@@ -638,7 +638,7 @@ function PN_API(setup) {
                 //action_event.update_at =
                 action_event.value = apply_update(o, action_event);
 
-                if (action_event.value) {
+                if (!isNullOrUndef(action_event.value)) {
                     applied = true;
                 }
 
@@ -1287,7 +1287,7 @@ function PN_API(setup) {
     }
     function value(object, path) {
 
-        if (isEmpty(object)) return {};
+        if (isNullOrUndef(object)) return object;
 
         if (!path && isEmpty(object['pn_val']) && !isPnList(object) ){
             return object;
@@ -1327,7 +1327,7 @@ function PN_API(setup) {
 
     function transform(k,v) {
 
-        if (v && !isEmpty(v['pn_val'])) {
+        if (v && !isNullOrUndef(v['pn_val'])) {
             return v['pn_val'];
 
         } else if (isPnList(v)) { // array
