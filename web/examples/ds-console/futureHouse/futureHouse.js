@@ -1,8 +1,8 @@
 // Initialize PubNub
 
 var pubnub = PUBNUB.init({
-    write_key: "pub-c-bf446f9e-dd7f-43fe-8736-d6e5dce3fe67",
-    read_key: "sub-c-d1c2cc5a-1102-11e4-8880-02ee2ddab7fe",
+    publish_key: "pub key",
+    subscribe_key: "sub key",
     origin: "pubsub.pubnub.com"
 });
 
@@ -20,79 +20,81 @@ function onSuccess(m) {
     console.log('Success: ' + log(m));
 }
 
-function logLogfile(m) {
-    var prettyData = m.value();
-    if (prettyData.length > 0) {
-        $("#fullLog").html(log(prettyData.slice(0, 5)));
-    } else {
-        $("#fullLog").html("No log data to show!");
-    }
-
-}
+// We will track devices and occupants with our IoT app
 
 var dial = {};
-
-// We have many devices in a house. This house is organized by rooms.
-
 var home = {}
 var thermostat = {};
 var occupants = {};
 
-
 var connectionStatusIcon = "disconnect.png";
 
-// These are populated by callbacks on home.thermostat
+// Sane defaults that are populated on.ready();
 var thermostatTemp = -1;
 var thermostatPower = "unknown";
 var thermostatMode = "unknown";
 
-// These are populated by callbacks from home.occupants
+// We'll keep a temp object for our own key/value tracking.
 var presenceObject = {};
 
 
-function thermostatSetter(ref) {
+function thermostatSetter(thermostatData) {
 
-    if (ref.value("temperature")) {
-        thermostatTemp = ref.value("temperature");
+    // called from merge, replace, and on.ready() callbacks
+    // sets ui and local vars with new thermostat values
+
+    // value() can take a path
+    if (thermostatData.value().temperature) {
+
+    // you can also take an absolute value call, and walk to the child value you want
+        thermostatTemp = thermostatData.value("temperature");
         $("#currentTemp").html(thermostatTemp);
     }
 
-    if (ref.value("mode")) {
-        thermostatMode = ref.value("mode");
+    if (thermostatData.value().mode) {
+        thermostatMode = thermostatData.value().mode;
         $("#thermostatMode").html(thermostatMode);
     }
 
-    if (ref.value("power")) {
-        thermostatPower = ref.value("power");
+    if (thermostatData.value().power) {
+        thermostatPower = thermostatData.value().power;
         $("#thermostatPower").html(thermostatPower);
     }
 
-    $("#thermostatLogs").html("<pre>" + log(ref.value()) + "</pre>");
+    $("#thermostatLogs").html("<pre>" + log(thermostatData.value()) + "</pre>");
+}
 
+function thermoReplace(options) {
+
+    var temp = options["temp"] || thermostatTemp;
+    var power = options["power"] || thermostatPower;
+    var mode = options["mode"] || thermostatMode;
+    var success = options["success"] || log;
+    var error = options["error"] || log;
+
+    thermostat.replace({"temperature": temp, "power": power, "mode": mode}, {success:success, error:error});
 }
 
 function logOccupants() {
-
+    //
+    // TODO: Can I perform the same object with the local occupants object instead?
     var presenceCount = Object.keys(presenceObject).length;
     console.log(presenceCount);
 
     $("#occupancyLogs").html("<pre>" + log(presenceObject) + "</pre>");
 
-    // if nobody is home
     if (presenceCount == 0) {
-
-        // turn off all but the porch lights
+        // if nobody is home, automatically lower the thermostat
+        // and turn off all but the porch lights
         $("#houseScene").attr("src", "img/house_at_night_porch_on.jpg");
-        // set the thermostat to heat at 65
+
         thermostatPower = "on";
         thermostatMode = "heat";
         thermostatTemp = 65;
-        thermostat.replace({"temperature": thermostatTemp, "power": thermostatPower, "mode": thermostatMode}, onSuccess, onError);
-
+        thermoReplace({"success":onSuccess, "error":onError});
         if (dial.set) {
             dial.set('value', thermostatTemp);
         }
-
 
     }
     else if (presenceCount == 1 && (presenceObject["dog"] || presenceObject["pizza"])) {
@@ -111,22 +113,32 @@ function logOccupants() {
     }
 }
 
-function refreshPresenceObject(ref) {
-
+function refreshPresenceObject(occupantsList) {
 
     // If !ref.data then our reference is now empty
-    if (!ref.data) {
+    if (!occupantsList.data) {
         //console.log("tree is empty!");
         logOccupants();
         return;
     }
 
-    $.each(ref.data, function (index, value) {
-        var person = value.pn_val;
-        presenceObject[ person] = index;
-        console.log(person);
-        roofSelector(person).toggle();
+    // Running .each() off a list lets us iterate across each one
+    // In this example, we are populating a local presence object
+    // And being sure the Pizza Delivery Person is evicted when
+    // The app starts up
+
+    if (occupantsList.each) {
+        occupantsList.each(function (personObject, key) {
+            var personName = personObject.value();
+
+            if (personName == "burglar") {
+                personObject.remove();
+            } else {
+                presenceObject[ personName] = key;
+                roofSelector(personName).toggle();
+            }
     });
+    }
 
     logOccupants();
 }
@@ -138,8 +150,8 @@ function roofSelector(person) {
 $(document).ready(function () {
 
     home = pubnub.sync('home');
-    thermostat = pubnub.sync('home.living_room.thermostat');
-    occupants = pubnub.sync('home.occupants');
+    thermostat = home.child('living_room.thermostat');
+    occupants = home.child('occupants');
 
     // Acknowledge when the thermostat has registered by turning it green
 
@@ -166,7 +178,7 @@ $(document).ready(function () {
                 if (e.newVal == thermostatTemp) {
                     return;
                 }
-                thermostat.replace({"temperature": e.newVal, "power": thermostatPower, "mode": thermostatMode}, log, log);
+                thermoReplace({"temp":e.newVal});
             });
 
             dial.set('value', thermostatTemp);
@@ -176,10 +188,9 @@ $(document).ready(function () {
     $("#thermostatMode").on('click', function (e) {
         // Note, we're not setting the mode here. We'll set that at the on.replace callback below.
         if (thermostatMode == "heat") {
-
-            thermostat.replace({"temperature": thermostatTemp, "power": thermostatPower, "mode": "cold"}, log, log);
+            thermoReplace({"mode":"cold"});
         } else {
-            thermostat.replace({"temperature": thermostatTemp, "power": thermostatPower, "mode": "heat"}, log, log);
+            thermoReplace({"mode":"heat"});
         }
 
     });
@@ -187,15 +198,15 @@ $(document).ready(function () {
     $("#thermostatPower").on('click', function (e) {
         // Note, we're not setting the mode here. We'll set that at the on.replace callback below.
         if (thermostatPower == "on") {
-            thermostat.replace({"temperature": thermostatTemp, "power": "off", "mode": thermostatMode}, log, log);
+            thermoReplace({"power":"off"});
         } else {
-            thermostat.replace({"temperature": thermostatTemp, "power": "on", "mode": thermostatMode}, log, log);
+            thermoReplace({"power":"on"});
         }
     });
 
     $("#thermostatAwayMode").on('click', function (e) {
         // Note, we're not setting the mode here. We'll set that at the on.replace callback below.
-            thermostat.merge({"temperature": 65, "power": "on", "mode": "heat"}, log, log);
+        thermostat.merge({"temperature": 65, "power": "on", "mode": "heat"}, {"success": log, "error": log});
     });
 
 
@@ -207,12 +218,10 @@ $(document).ready(function () {
         thermostatSetter(ref);
     });
 
-    // Occupants
-
     // pop example
 
     $("#ejectPerson").on("click", function(e){
-        occupants.pop(onSuccess, onError);
+        occupants.pop({"success": onSuccess, "error": onError});
     });
 
     $(".family").on("click", function (e) {
@@ -229,10 +238,10 @@ $(document).ready(function () {
             // TODO: occupants.remove() takes 0 or 2 arguments
             // TODO: Need iterator to work
 
-            occupants.removeByKey(presenceObject[person], log, log);
+            occupants.remove({"path": presenceObject[person], "success": log, "error": log});
 
         } else {
-            occupants.push(person, onSuccess, onError );
+            occupants.push(person, {"success": onSuccess, "error": onError });
         }
     });
 
@@ -248,7 +257,7 @@ $(document).ready(function () {
 
         $.each(ref.delta, function (index, person){
 
-            console.log("Occupant Removed: " + person.value + " at " + person.index);
+            console.log("Occupant Removed: " + person.value + " at " + person.key);
             delete presenceObject[person.value];
             roofSelector(person.value).toggle();
         });
@@ -276,16 +285,7 @@ $(document).ready(function () {
         // The on.ready() callback fires when the reference point (in this case, home) is synced
 
         home.on.change(function (ref) {
-
-            // on.change() is any mutation -- useful for general catchalls
-
-            // In this example, we'll use it as a logger interface
-            // We'll log everything that happens
-            // Unless its happening for log stuff
-
-            var theChange = ref.delta[0];
-            //console.log("The change to house was: " + log(theChange));
-
+            console.log("HOME CHANGE");
         });
 
         home.on.merge(function (ref) {

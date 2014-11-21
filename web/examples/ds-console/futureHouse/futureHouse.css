@@ -25,13 +25,10 @@ td {
     text-align: center;
 }
 
-#logfileTable td {
-}
-
 #houseScene {
     width: 500px;
 }
 
-#manualThermoResync{
-    width: 64px;
+#familyDashboard {
+    border: 1px solid black;
 }
