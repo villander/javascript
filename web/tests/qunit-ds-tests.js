@@ -6,6 +6,15 @@ var pubnub = PUBNUB({
 });
 
 
+var pubnub_pam = PUBNUB({
+    write_key     : "ds-pam",
+    read_key      : "ds-pam",
+    secret_key    : "ds-pam",
+    origin        : "pubsub.pubnub.com",
+    auth_key      : 'abcd',
+    build_u       : true
+});
+
 function in_list(list,str) {
     for (var x in list) {
         if (list[x] == str) return true;
@@ -21,8 +30,64 @@ function in_list(list,str) {
  }
 
 function pn_random(){
-    return Math.floor((Math.random() * 100000000000000000000) + 1);
+    return '' + Math.floor((Math.random() * 100000000000000000000) + 1);
 }
+
+
+test("#PAM grant() should be able to grant permission on object", function() {
+    expect(3);
+    stop(1);
+    var object_id = pn_random();
+    pubnub_pam.grant({
+        'object_id' : object_id,
+        'read'      : true,
+        'write'     : true,
+        'auth_key'  : 'abcd',
+        'success'   : function(r) {
+            pubnub_pam.merge(object_id + '.a', "abcd", function(r){
+                assert.ok(true);
+                pubnub_pam.replace(object_id + '.a', "abcd", function(r){
+                    assert.ok(true);
+                    pubnub_pam.remove(object_id + '.a', function(r){
+                        assert.ok(true);
+                        start();
+                    })
+                })
+            })
+        },
+        'error'     : function(r) {
+            assert.ok(false);
+            start();
+        }
+    })
+})
+
+test("#PAM revoke() should be able to revoke permission on object", function() {
+    stop(1);
+    expect(3)
+    var object_id = pn_random();
+    pubnub_pam.revoke({
+        'object_id' : object_id,
+        'auth_key'  : 'abcd',
+        'success'   : function(r) {
+            pubnub_pam.merge(object_id + '.a', "abcd", null, function(r){
+                ok(true);
+                pubnub_pam.replace(object_id + '.a', "abcd", null, function(r){
+                    ok(true);
+                    pubnub_pam.remove(object_id + '.a', null, function(r){
+                        ok(true);
+                        start();
+                    })
+                })
+            })
+        },
+        'error'     : function(r) {
+            ok(false);
+            start();
+        }
+    })
+})
+
 
 test("on.ready() should be invoked when sync reference ready", function() {
     expect(1);

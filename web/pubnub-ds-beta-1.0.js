@@ -4773,7 +4773,13 @@ function ajax( setup ) {
 
             failed && fail(response);
         };
-
+    
+    if (method !== 'GET') {
+        data['method'] = method;
+        method = 'POST';
+    }
+    
+    
     // Send
     try {
         xhr = FDomainRequest()      ||
@@ -4791,6 +4797,8 @@ function ajax( setup ) {
                     case 403:
                     case 500:
                         try {
+                            console.log(xhr.status);
+                            console.log(xhr.responseText);
                             response = JSON['parse'](xhr.responseText);
                             done(1,response);
                         }

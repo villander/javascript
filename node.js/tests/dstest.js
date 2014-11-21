@@ -14,7 +14,8 @@ var pubnub_pam = PUBNUB({
     secret_key    : "ds-pam",
     origin        : "pubsub.pubnub.com",
     auth_key      : 'abcd',
-    build_u       : true
+    build_u       : true,
+    jsonp         : true
 });
 
 var channel = 'javascript-test-channel-' + Date.now();
