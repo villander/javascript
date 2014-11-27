@@ -1835,54 +1835,50 @@ function PN_API(setup) {
             get_wrapper(args);
         },
 
-        'merge'  : function(object_id, data, success, error) {
+        'merge'  : function(object_id, data, options) {
 
             merge({
                 'object_id' : object_id,
                 'data'      : data,
-                'callback'  : success,
-                'error'     : error
+                'callback'  : _success(options),
+                'error'     : _error(options)
             });
-
         },
 
-        'replace' : function(object_id, data, success, error) {
+        'replace' : function(object_id, data, options) {
 
             replace({
                 'object_id' : object_id,
                 'data'      : data,
-                'callback'  : success,
-                'error'     : error
+                'callback'  : _success(options),
+                'error'     : _error(options)
             });
         },
 
-        'remove'  : function(object_id, success, error) {
+        'remove'  : function(object_id, options) {
+
             remove({
                 'object_id' : object_id,
-                'callback'  : success,
-                'error'     : error
+                'callback'  : _success(options),
+                'error'     : _error(options)
             });
         },
 
-        'push'    : function(object_id, data, success, error) {
-            merge({
+        'push'    : function(object_id, data, options) {
+
+            var args = {
                 'object_id' : object_id,
                 'data'      : data,
-                'callback'  : success,
-                'error'     : error,
+                'callback'  : _success(options),
+                'error'     : _error(options),
                 'mode'      : 'POST'
-            });
-        },
-        'push_with_sort_key'    : function(object_id, data, sort_key, success, error) {
-            merge({
-                'object_id' : object_id,
-                'sort_key'  : sort_key,
-                'data'      : data,
-                'callback'  : success,
-                'error'     : error,
-                'mode'      : 'POST'
-            });
-        },
+            };
+            if (options && !isEmpty(options['sort_key'])) {
+                args['sort_key'] = options['sort_key'];
+            }
+            merge(args);
+        }
+        ,
         'remove_object_id' : function(object_id) {
             SELF['unsubscribe']({'channel' : _get_channel_list_for_unsubscribe(object_id)});
         },

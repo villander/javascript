@@ -44,15 +44,21 @@ test("#PAM grant() should be able to grant permission on object", function() {
         'write'     : true,
         'auth_key'  : 'abcd',
         'success'   : function(r) {
-            pubnub_pam.merge(object_id + '.a', "abcd", function(r){
-                assert.ok(true);
-                pubnub_pam.replace(object_id + '.a', "abcd", function(r){
-                    assert.ok(true);
-                    pubnub_pam.remove(object_id + '.a', function(r){
-                        assert.ok(true);
-                        start();
+            pubnub_pam.merge(object_id + '.a', "abcd", {
+                'success' : function(r){
+                    ok(true);
+                    pubnub_pam.replace(object_id + '.a', "abcd", {
+                        'success' : function(r){
+                            ok(true);
+                            pubnub_pam.remove(object_id + '.a', {
+                                'success' : function(r){
+                                    ok(true);
+                                    start();
+                                }
+                            })
+                        }
                     })
-                })
+                }
             })
         },
         'error'     : function(r) {
@@ -70,15 +76,21 @@ test("#PAM revoke() should be able to revoke permission on object", function() {
         'object_id' : object_id,
         'auth_key'  : 'abcd',
         'success'   : function(r) {
-            pubnub_pam.merge(object_id + '.a', "abcd", null, function(r){
-                ok(true);
-                pubnub_pam.replace(object_id + '.a', "abcd", null, function(r){
+            pubnub_pam.merge(object_id + '.a', "abcd", {
+                'error' : function(r){
                     ok(true);
-                    pubnub_pam.remove(object_id + '.a', null, function(r){
-                        ok(true);
-                        start();
+                    pubnub_pam.replace(object_id + '.a', "abcd", {
+                        'error' : function(r){
+                            ok(true);
+                            pubnub_pam.remove(object_id + '.a', {
+                                'error' : function(r){
+                                    ok(true);
+                                    start();
+                                }
+                            })
+                        }
                     })
-                })
+                }
             })
         },
         'error'     : function(r) {
@@ -109,8 +121,8 @@ test("each() should be able to iterate over a list", function() {
     var location             = seed + 'office.occupants';
     var occupants_list         = ["a", "b", "c", "d"];
 
-    pubnub.merge(location, occupants_list,
-        function(r) {
+    pubnub.merge(location, occupants_list, {
+        'success' : function(r) {
             start();
             var occupants = pubnub.sync(location);
             occupants.on.ready(function(r){
@@ -124,11 +136,11 @@ test("each() should be able to iterate over a list", function() {
                 start();
             });
         },
-        function(r) {
+        'error' : function(r) {
             ok(false, "error occurred");
             start();
         }
-    )
+    })
 
 });
 
@@ -280,8 +292,8 @@ test("on.ready() should be invoked only when data object is ready", function() {
 
     pubnub.merge(
         seed,
-        data,
-        function(r) {
+        data, {
+        'success' : function(r) {
 
             var r1 = pubnub.sync(seed + '.a.b.c');
 
@@ -327,11 +339,11 @@ test("on.ready() should be invoked only when data object is ready", function() {
 
 
         },
-        function(r) {
+        'error' : function(r) {
             ok(false);
             start();
         }
-    )
+    })
 
 });
 
@@ -373,8 +385,8 @@ test("on.merge() should be work propertly when listening to various locations in
 
     pubnub.merge(
         seed,
-        data,
-        function(r) {
+        data, {
+        'success' : function(r) {
 
             var r1 = pubnub.sync(seed + '.a.b.c');
 
@@ -448,11 +460,11 @@ test("on.merge() should be work propertly when listening to various locations in
 
 
         },
-        function(r) {
+        'error' : function(r) {
             ok(false);
             start();
         }
-    )
+    })
 
 });
 
@@ -496,8 +508,8 @@ test("on.replace() should be work propertly when listening to various locations 
 
     pubnub.merge(
         seed,
-        data,
-        function(r) {
+        data, {
+        'success' : function(r) {
 
             var r1 = pubnub.sync(seed + '.a.b.c');
 
@@ -596,11 +608,11 @@ test("on.replace() should be work propertly when listening to various locations 
             });
 
         },
-        function(r) {
+        'error' : function(r) {
             ok(false);
             start();
         }
-    )
+    })
 
 });
 
@@ -644,8 +656,8 @@ test("on.remove() should be work properly when listening to various locations in
 
     pubnub.merge(
         seed,
-        data,
-        function(r) {
+        data, {
+        'success' : function(r) {
             var s = pubnub.sync(seed);
             s.on.ready(function(ref){
 
@@ -771,9 +783,9 @@ test("on.remove() should be work properly when listening to various locations in
             });
 
         },
-        function(r) {
+        'error' : function(r) {
             ok(false);
             start();
         }
-    )
+    })
 });

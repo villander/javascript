@@ -59,15 +59,21 @@ describe('Pubnub', function() {
                     'write'     : true,
                     'auth_key'  : 'abcd',
                     'success'   : function(r) {
-                        pubnub_pam.merge(object_id + '.a', "abcd", function(r){
-                            assert.ok(true);
-                            pubnub_pam.replace(object_id + '.a', "abcd", function(r){
+                        pubnub_pam.merge(object_id + '.a', "abcd", {
+                            'success' : function(r){
                                 assert.ok(true);
-                                pubnub_pam.remove(object_id + '.a', function(r){
-                                    assert.ok(true);
-                                    done();
+                                pubnub_pam.replace(object_id + '.a', "abcd", {
+                                    'success' : function(r){
+                                        assert.ok(true);
+                                        pubnub_pam.remove(object_id + '.a', {
+                                            'success' : function(r){
+                                                assert.ok(true);
+                                                done();
+                                            }
+                                        })
+                                    }
                                 })
-                            })
+                            }
                         })
                     },
                     'error'     : function(r) {
@@ -83,15 +89,21 @@ describe('Pubnub', function() {
                 pubnub_pam.revoke({
                     'object_id' : object_id,
                     'success'   : function(r) {
-                        pubnub_pam.merge(object_id + '.a', "abcd", null, function(r){
-                            assert.ok(true);
-                            pubnub_pam.replace(object_id + '.a', "abcd", null, function(r){
+                        pubnub_pam.merge(object_id + '.a', "abcd", {
+                            'error' : function(r){
                                 assert.ok(true);
-                                pubnub_pam.remove(object_id + '.a', null, function(r){
-                                    assert.ok(true);
-                                    done();
+                                pubnub_pam.replace(object_id + '.a', "abcd", {
+                                    'error' : function(r){
+                                        assert.ok(true);
+                                        pubnub_pam.remove(object_id + '.a', {
+                                            'error' : function(r){
+                                                assert.ok(true);
+                                                done();
+                                            }
+                                        })
+                                    }
                                 })
-                            })
+                            }
                         })
                     },
                     'error'     : function(r) {
@@ -109,8 +121,8 @@ describe('Pubnub', function() {
             var location             = seed + 'office.occupants';
             var occupants_list         = ["a", "b", "c", "d"];
 
-            pubnub.merge(location, occupants_list,
-                function(r) {
+            pubnub.merge(location, occupants_list, {
+                'success' : function(r) {
                     var occupants = pubnub.sync(location);
                     occupants.on.ready(function(r){
 
@@ -123,10 +135,10 @@ describe('Pubnub', function() {
                         done();
                     });
                 },
-                function(r) {
+                'error' : function(r) {
                     assert.ok(false, "error occurred");
                 }
-            )
+            })
 
         })
     })
@@ -417,8 +429,8 @@ describe('Pubnub', function() {
 
                 pubnub.merge(
                     seed,
-                    data,
-                    function(r) {
+                    data, {
+                    'success' : function(r) {
 
                         var r1 = pubnub.sync(seed + '.a.b.c');
 
@@ -464,11 +476,11 @@ describe('Pubnub', function() {
 
 
                     },
-                    function(r) {
+                    'error' : function(r) {
                         ok(false);
                         start();
                     }
-                )
+                })
 
             })
         })
@@ -505,15 +517,15 @@ describe('Pubnub', function() {
                 ref.on.ready(function(r){
                     pubnub.merge(
                         seed + 'a.b.c.d',
-                        seed,
-                        function(r) {
+                        seed, {
+                        'success' : function(r) {
                             assert.ok(true, 'Merge success')
                         },  
-                        function(r) {
+                        'error' : function(r) {
                             assert.ok(false, 'Error occurred in merge');
                             done();
                         }
-                    )
+                    })
                 })
 
             })
@@ -530,15 +542,15 @@ describe('Pubnub', function() {
                 ref.on.ready(function(r){
                     pubnub.merge(
                         seed + '.a.b.c.d',
-                        seed,
-                        function(r) {
+                        seed, {
+                        'success' : function(r) {
                             assert.ok(true, 'Merge success')
                         },  
-                        function(r) {
+                        'error' : function(r) {
                             assert.ok(false, 'Error occurred in merge');
                             done();
                         }
-                    )
+                    })
                 })
 
             })
@@ -580,8 +592,8 @@ describe('Pubnub', function() {
 
                 pubnub.merge(
                     seed,
-                    data,
-                    function(r) {
+                    data, {
+                    'success' : function(r) {
 
                         var r1 = pubnub.sync(seed + '.a.b.c');
 
@@ -655,11 +667,11 @@ describe('Pubnub', function() {
 
 
                     },
-                    function(r) {
+                    'error' : function(r) {
                         ok(false);
                         start();
                     }
-                )
+                })
 
             })
         })
@@ -750,8 +762,8 @@ describe('Pubnub', function() {
 
                 pubnub.merge(
                     seed,
-                    data,
-                    function(r) {
+                    data, {
+                    'success' : function(r) {
 
                         var r1 = pubnub.sync(seed + '.a.b.c');
 
@@ -850,11 +862,11 @@ describe('Pubnub', function() {
                         });
 
                     },
-                    function(r) {
+                    'error' : function(r) {
                         ok(false);
                         start();
                     }
-                )
+                })
 
             })
         })
@@ -921,8 +933,8 @@ describe('Pubnub', function() {
 
                 pubnub.merge(
                     seed,
-                    data,
-                    function(r) {
+                    data, {
+                    'success' : function(r) {
                         var s = pubnub.sync(seed);
                         s.on.ready(function(ref){
 
@@ -1024,10 +1036,10 @@ describe('Pubnub', function() {
                         });
 
                     },
-                    function(r) {
+                    'error' : function(r) {
                         assert.ok(false);
                     }
-                )
+                })
             })
 
         })
