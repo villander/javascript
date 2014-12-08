@@ -1239,8 +1239,6 @@ function PN_API(setup) {
                             }
 
 
-                        } else {
-                            resync_all();
                         }
                     }
                 }
