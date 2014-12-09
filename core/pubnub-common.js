@@ -2146,6 +2146,21 @@ function PN_API(setup) {
                 });
                 return value(internal[last_key]);
             };
+            ref['shift'] = function(options) {
+                internal = _get_object_by_path(object_id,path);
+                if(!isPnList(internal)) {
+                    return null;
+                }
+                var keys = getObjectKeysSorted(internal);
+                var first_key = keys.shift();
+
+                remove({
+                    'object_id' : location + '.' + first_key,
+                    'callback'  : _success(options),
+                    'error'     : _error(options)
+                });
+                return value(internal[first_key]);
+            };
             ref['removeByIndex'] = function(index, options) {
 
                 internal = _get_object_by_path(object_id,path);
