@@ -8,6 +8,9 @@ var pubnub = PUBNUB({
     build_u       : true
 });
 
+var pubnub_random_objects = [];
+var pubnub_pam_random_objects = [];
+
 var pubnub_pam = PUBNUB({
     write_key     : "ds-pam",
     read_key      : "ds-pam",
@@ -49,16 +52,33 @@ function pn_random(){
 describe('Pubnub', function() {
 
     this.timeout(40000);
+
+
+    after(function(){
+        for (var i in pubnub_random_objects) {
+            var id = pubnub_random_objects[i];
+            pubnub.remove(id);
+        }
+        for (var i in pubnub_pam_random_objects) {
+            var id = pubnub_pam_random_objects[i];
+            pubnub_pam.remove(id);
+        }
+    })
+
     describe("#PAM", function(){
         describe("grant()", function(){
             it("should be able to grant permission on object", function(done) {
                 var object_id = pn_random();
+                pubnub_random_objects.push(object_id);
                 pubnub_pam.grant({
                     'object_id' : object_id,
                     'read'      : true,
                     'write'     : true,
                     'auth_key'  : 'abcd',
                     'success'   : function(r) {
+                        
+                        pubnub_pam_random_objects.push(object_id + '.a');
+
                         pubnub_pam.merge(object_id + '.a', "abcd", {
                             'success' : function(r){
                                 assert.ok(true);
@@ -86,9 +106,13 @@ describe('Pubnub', function() {
         describe("revoke()", function(){
             it("should be able to revoke permission on object", function(done) {
                 var object_id = pn_random();
+                pubnub_random_objects.push(object_id);
                 pubnub_pam.revoke({
                     'object_id' : object_id,
                     'success'   : function(r) {
+                        
+                        pubnub_pam_random_objects.push(object_id + '.a');
+
                         pubnub_pam.merge(object_id + '.a', "abcd", {
                             'error' : function(r){
                                 assert.ok(true);
@@ -120,6 +144,8 @@ describe('Pubnub', function() {
             var seed                 = pn_random() + '-ready-';
             var location             = seed + 'office.occupants';
             var occupants_list         = ["a", "b", "c", "d"];
+
+            pubnub_random_objects.push(location);
 
             pubnub.merge(location, occupants_list, {
                 'success' : function(r) {
@@ -426,7 +452,7 @@ describe('Pubnub', function() {
                     }
 
                 };
-
+                pubnub_random_objects.push(seed);
                 pubnub.merge(
                     seed,
                     data, {
@@ -499,6 +525,7 @@ describe('Pubnub', function() {
                 });
                 
                 ref.on.ready(function(r){
+                    pubnub_random_objects.push(seed + 'a.b.c.d');
                     ref.merge(seed);
                 })
 
@@ -515,6 +542,7 @@ describe('Pubnub', function() {
                 });
                 
                 ref.on.ready(function(r){
+                    pubnub_random_objects.push(seed + 'a.b.c.d');
                     pubnub.merge(
                         seed + 'a.b.c.d',
                         seed, {
@@ -540,6 +568,7 @@ describe('Pubnub', function() {
                 });
                 
                 ref.on.ready(function(r){
+                    pubnub_random_objects.push(seed + '.a.b.c.d');
                     pubnub.merge(
                         seed + '.a.b.c.d',
                         seed, {
@@ -589,7 +618,7 @@ describe('Pubnub', function() {
                     }
 
                 };
-
+                pubnub_random_objects.push(seed);
                 pubnub.merge(
                     seed,
                     data, {
@@ -657,6 +686,7 @@ describe('Pubnub', function() {
 
                            r6.on.ready(function(ref){
                             deepEqual(ref.value(), val1);
+                            pubnub_random_objects.push(seed + '.a.b.c.d.e.f.g.h.i.j.k.l');
                             r6.merge(val2);
                             start();
                         });
@@ -718,6 +748,7 @@ describe('Pubnub', function() {
                 });
 
                 ref.on.ready(function(r){
+                    pubnub_random_objects.push(seed + 'a.b.c.d');
                     ref.merge(seed + 2);
                 })
 
@@ -759,7 +790,7 @@ describe('Pubnub', function() {
                     }
 
                 };
-
+                pubnub_random_objects.push(seed);
                 pubnub.merge(
                     seed,
                     data, {
@@ -848,6 +879,7 @@ describe('Pubnub', function() {
 
                            r6.on.ready(function(ref){
                             deepEqual(ref.value(), val1);
+                            pubnub_random_objects.push(val2);
                             r6.merge(val2);
                             start();
                         });
@@ -890,6 +922,7 @@ describe('Pubnub', function() {
                 });
 
                 ref.on.ready(function(r){
+                    pubnub_random_objects.push(seed + 3);
                     ref.merge(seed + 3)
                 })
 
@@ -930,7 +963,7 @@ describe('Pubnub', function() {
                     }
 
                 };
-
+                pubnub_random_objects.push(seed);
                 pubnub.merge(
                     seed,
                     data, {
@@ -973,8 +1006,9 @@ describe('Pubnub', function() {
                         });
 
                         var r2 = pubnub.sync(seed + '.a.b');
+                        pubnub_random_objects.push(seed + '.a.b');
 
-                           r2.on.ready(function(ref){
+                        r2.on.ready(function(ref){
                             assert.deepEqual(ref.value('c.d.e.f.g.h.i.j.k.l'), val1);
                         });
                         r2.on.merge(function(ref){
