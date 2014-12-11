@@ -2023,9 +2023,17 @@ function PN_API(setup) {
 
                                 event_type = 'remove';
 
+                                for (var i in r) {
+                                    var act = r[i];
+                                    if (act['action'] === 'replace') {
+                                        event_type = 'replace';
+                                        break;
+                                    }
+                                }
+
                             }
 
-                            else if (action === 'replace-delete' || action === 'replace') {     // set events
+                            else if (action === 'replace') {     // set events
 
 
                                 event_type = 'replace';

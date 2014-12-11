@@ -5,11 +5,10 @@
 <script>
 
 var pubnub = PUBNUB.init({
-    write_key: "ds-pam",
-    read_key: "ds-pam",
-    secret_key : 'ds-pam',
-    origin: "pubsub.pubnub.com",
-    auth_key : "abcd"
+    write_key: "ds",
+    read_key: "ds",
+    secret_key : 'ds',
+    origin: "dara25.devbuild.pubnub.com"
 });
 
 function sync(location) {
@@ -27,7 +26,7 @@ function sync(location) {
 
     x.on.replace(function(ref){
         console.log('REPLACE ' + location);
-        console.log(JSON.stringify(ref.value(), null, 2));
+        console.log('REPLACE ' + JSON.stringify(ref.value(), null, 2));
     });
 
     x.on.remove(function(ref){
@@ -54,7 +53,7 @@ function sync(location) {
     return x;
 }
 
-pubnub.merge("ad", {"a":"n"}, function(r){console.log(JSON.stringify(r))}, function(r){console.log(JSON.stringify(r))});
+//pubnub.merge("ad", {"a":"n"}, function(r){console.log(JSON.stringify(r))}, function(r){console.log(JSON.stringify(r))});
 
 
 //pubnub.snapshot("ad.a", function(r){console.log(JSON.stringify(r))}, function(r){console.log(JSON.stringify(r))});
