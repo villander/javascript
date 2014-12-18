@@ -1,6 +1,6 @@
 var pubnub = PUBNUB({
-    write_key     : "pub-c-bf446f9e-dd7f-43fe-8736-d6e5dce3fe67",
-    read_key      : "sub-c-d1c2cc5a-1102-11e4-8880-02ee2ddab7fe",
+    write_key     : "ds",
+    read_key      : "ds",
     origin        : "pubsub.pubnub.com",
     build_u       : true
 });
@@ -531,7 +531,7 @@ test("on.replace() should be work propertly when listening to various locations 
 
             var r2 = pubnub.sync(seed + '.a.b');
 
-               r2.on.ready(function(ref){
+            r2.on.ready(function(ref){
                 deepEqual(ref.value('c.d.e.f.g.h.i.j.k.l'), val1);
                 start();
             });
@@ -592,7 +592,7 @@ test("on.replace() should be work propertly when listening to various locations 
 
             var r6 = pubnub.sync(seed + '.a.b.c.d.e.f.g.h.i.j.k.l');
 
-               r6.on.ready(function(ref){
+            r6.on.ready(function(ref){
                 deepEqual(ref.value(), val1);
                 r6.merge(val2);
                 start();

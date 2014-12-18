@@ -35,6 +35,11 @@ THE SOFTWARE.
 var NOW                 = 1
 ,   http                = require('http')
 ,   https               = require('https')
+,   keepAliveAgent      = new (keepAliveIsEmbedded() ? http.Agent : require('agentkeepalive'))({
+                            keepAlive: true,
+                            keepAliveMsecs: 300000,
+                            maxSockets: 5
+                          })
 ,   XHRTME              = 310000
 ,   DEF_TIMEOUT         = 10000
 ,   SECOND              = 1000
@@ -133,7 +138,8 @@ function xdr( setup ) {
     options.path     = proxy ? "http://" + origin + url:url;
     options.headers  = proxy ? { 'Host': origin }:null;
     options.method   = mode;
-    options.agent    = false;
+    options.keepAlive= !!keepAliveAgent;
+    //options.agent    = keepAliveAgent;    
     options.body     = payload;
     options.headers =  {'Content-Length': payload.length};
 
@@ -141,8 +147,8 @@ function xdr( setup ) {
     try {
         request = (ssl ? https : http)['request'](options, function(response) {
             response.setEncoding('utf8');
-            response.on( 'error', function(r){ console.log('ERROR');done(1, r || body || { "error" : "Network Connection Error"})});
-            response.on( 'abort', function(r){ console.log('ABORT');done(1, r || body || { "error" : "Network Connection Error"})});
+            response.on( 'error', function(){done(1, body || { "error" : "Network Connection Error"})});
+            response.on( 'abort', function(){done(1, body || { "error" : "Network Connection Error"})});
             response.on( 'data', function (chunk) {
                 if (chunk) body += chunk;
             } );
@@ -227,6 +233,9 @@ function crypto_obj() {
     }
 }
 
+function keepAliveIsEmbedded() {
+  return 'EventEmitter' in http.Agent.super_;
+}
 
 
 var CREATE_PUBNUB = function(setup) {
@@ -237,6 +246,11 @@ var CREATE_PUBNUB = function(setup) {
     setup['hmac_SHA256'] = get_hmac_SHA256;
     setup['crypto_obj'] = crypto_obj();
     setup['params'] = {'pnsdk' : PNSDK};
+
+    if (setup['keepAlive'] === false) {
+      keepAliveAgent = undefined;
+    }
+
     SELF = function(setup) {
         return CREATE_PUBNUB(setup);
     }

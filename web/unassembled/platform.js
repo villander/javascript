@@ -30,23 +30,47 @@ console.log    || (
  * LOCAL STORAGE OR COOKIE
  */
 var db = (function(){
-    var ls = window['localStorage'];
+    var store = {};
+    var ls = false;
+    try {
+        ls = window['localStorage'];
+    } catch (e) { }
+    var cookieGet = function(key) {
+        if (document.cookie.indexOf(key) == -1) return null;
+        return ((document.cookie||'').match(
+            RegExp(key+'=([^;]+)')
+        )||[])[1] || null;
+    };
+    var cookieSet = function( key, value ) {
+        document.cookie = key + '=' + value +
+            '; expires=Thu, 1 Aug 2030 20:00:00 UTC; path=/';
+    };
+    var cookieTest = (function() {
+        try {
+            cookieSet('pnctest', '1');
+            return cookieGet('pnctest') === '1';
+        } catch (e) {
+            return false;
+        }
+    }());
     return {
         'get' : function(key) {
             try {
                 if (ls) return ls.getItem(key);
-                if (document.cookie.indexOf(key) == -1) return null;
-                return ((document.cookie||'').match(
-                    RegExp(key+'=([^;]+)')
-                )||[])[1] || null;
-            } catch(e) { return }
+                if (cookieTest) return cookieGet(key);
+                return store[key];
+            } catch(e) {
+                return store[key];
+            }
         },
         'set' : function( key, value ) {
             try {
                 if (ls) return ls.setItem( key, value ) && 0;
-                document.cookie = key + '=' + value +
-                    '; expires=Thu, 1 Aug 2030 20:00:00 UTC; path=/';
-            } catch(e) { return }
+                if (cookieTest) cookieSet( key, value );
+                store[key] = value;
+            } catch(e) {
+                store[key] = value;
+            }
         }
     };
 })();
@@ -366,7 +390,10 @@ var PDIV          = $('pubnub') || 0
 ,   CREATE_PUBNUB = function(setup) {
 
     // Force JSONP if requested from user.
-    if (setup['jsonp']) XORIGN = 0;
+    if (setup['jsonp']) 
+        XORIGN = 0;
+    else 
+        XORIGN = UA.indexOf('MSIE 6') == -1;
 
     var SUBSCRIBE_KEY = setup['subscribe_key'] || ''
     ,   KEEPALIVE     = (+setup['keepalive']   || DEF_KEEPALIVE)   * SECOND
