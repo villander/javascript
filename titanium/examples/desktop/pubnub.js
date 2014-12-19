@@ -1,4 +1,4 @@
-// ds-beta-1.1
+// ds-beta-2.0
 (function(){
 var NOW             = 1
 ,   READY           = false
@@ -13,7 +13,7 @@ var NOW             = 1
 ,   PARAMSBIT       = '&'
 ,   PRESENCE_HB_THRESHOLD = 5
 ,   PRESENCE_HB_DEFAULT  = 30
-,   SDK_VER         = 'ds-beta-1.1'
+,   SDK_VER         = 'ds-beta-2.0'
 ,   REPL            = /{([\w\-]+)}/g;
 
 DEBUG = 0;
@@ -4849,7 +4849,7 @@ THE SOFTWARE.
  */
 var NOW        = 1
 ,   MAGIC   = /\$?{([\w\-]+)}/g
-,    PNSDK            = 'PubNub-JS-' + 'Titanium' + '/' +  'ds-beta-1.1'
+,    PNSDK            = 'PubNub-JS-' + 'Titanium' + '/' +  'ds-beta-2.0'
 ,   ANDROID = Ti.Platform.name.toLowerCase().indexOf('android') >= 0
 ,   XHRTME     = 310000;
 

@@ -1,4 +1,4 @@
-// Version: ds-beta-1.1
+// Version: ds-beta-2.0
 /* =-====================================================================-= */
 /* =-====================================================================-= */
 /* =-=========================     JSON     =============================-= */
@@ -162,7 +162,7 @@ var NOW             = 1
 ,   PARAMSBIT       = '&'
 ,   PRESENCE_HB_THRESHOLD = 5
 ,   PRESENCE_HB_DEFAULT  = 30
-,   SDK_VER         = 'ds-beta-1.1'
+,   SDK_VER         = 'ds-beta-2.0'
 ,   REPL            = /{([\w\-]+)}/g;
 
 DEBUG = 0;
@@ -4977,7 +4977,7 @@ window['PUBNUB'] || (function() {
 var SWF             = 'https://pubnub.a.ssl.fastly.net/pubnub.swf'
 ,   ASYNC           = 'async'
 ,   UA              = navigator.userAgent
-,   PNSDK           = 'PubNub-JS-' + 'Web' + '/' + 'ds-beta-1.1'
+,   PNSDK           = 'PubNub-JS-' + 'Web' + '/' + 'ds-beta-2.0'
 ,   XORIGN          = UA.indexOf('MSIE 6') == -1;
 
 /**

@@ -1,4 +1,4 @@
-// Version: ds-beta-1.1
+// Version: ds-beta-2.0
 var NOW             = 1
 ,   READY           = false
 ,   READY_BUFFER    = []
@@ -12,7 +12,7 @@ var NOW             = 1
 ,   PARAMSBIT       = '&'
 ,   PRESENCE_HB_THRESHOLD = 5
 ,   PRESENCE_HB_DEFAULT  = 30
-,   SDK_VER         = 'ds-beta-1.1'
+,   SDK_VER         = 'ds-beta-2.0'
 ,   REPL            = /{([\w\-]+)}/g;
 
 DEBUG = 0;
@@ -3707,7 +3707,7 @@ var NOW                 = 1
 ,   XHRTME              = 310000
 ,   DEF_TIMEOUT         = 10000
 ,   SECOND              = 1000
-,   PNSDK               = 'PubNub-JS-' + 'Nodejs' + '/' +  'ds-beta-1.1'
+,   PNSDK               = 'PubNub-JS-' + 'Nodejs' + '/' +  'ds-beta-2.0'
 ,   crypto              = require('crypto')
 ,   proxy               = null
 ,   XORIGN              = 1;
