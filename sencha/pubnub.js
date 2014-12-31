@@ -310,12 +310,15 @@ function PN_API(setup) {
     ,   COMPATIBLE_35 = setup['compatible_3.5']  || false
     ,   xdr           = setup['xdr']
     ,   params        = setup['params'] || {}
+    ,   get_current_time = setup['get_current_time'] || function() { return Date.now()}
     ,   error         = setup['error']      || function() {}
     ,   _is_online    = setup['_is_online'] || function() { return 1 }
     ,   jsonp_cb      = setup['jsonp_cb']   || function() { return 0 }
     ,   db            = setup['db']         || {'get': function(){}, 'set': function(){}}
     ,   CIPHER_KEY    = setup['cipher_key']
     ,   UUID          = setup['uuid'] || ( !setup['unique_uuid'] && db && db['get'](SUBSCRIBE_KEY+'uuid') || '')
+    ,   ORTT          = setup['ortt'] || false
+    ,   SEQN          = -1
     ,   _poll_timer
     ,   _poll_timer2;
 
@@ -541,6 +544,20 @@ function PN_API(setup) {
                 url      : url
             });
 
+    }
+    function pad(s, n) {
+        var l = s.length;
+
+        if (s.length < n) {
+            s += Array(n - s.length + 1).join('0');
+        }
+        return s;
+    }
+
+    function get_ortt() {
+        var now = get_current_time();
+
+        return pad(now.toString(), 17);
     }
 
     // Announce Leave Event
@@ -958,6 +975,7 @@ function PN_API(setup) {
             ,   store    = ('store_in_history' in args) ? args['store_in_history']: true
             ,   jsonp    = jsonp_cb()
             ,   add_msg  = 'push'
+            ,   meta     = args['meta']
             ,   url;
 
             if (args['prepend']) add_msg = 'unshift'
@@ -981,7 +999,16 @@ function PN_API(setup) {
                 jsonp, encode(msg)
             ];
 
-            params = { 'uuid' : UUID, 'auth' : auth_key }
+            params = { 'uuid' : UUID, 'auth' : auth_key, 'seqn' : ++SEQN % 65535 }
+
+            if (ORTT) {
+                params['ortt'] = {
+                    't' : get_ortt()
+                }
+            }
+            if (meta && typeof meta === 'object') {
+                params['meta'] = JSON.stringify(meta);
+            }
 
             if (!store) params['store'] ="0"
 
@@ -1093,6 +1120,7 @@ function PN_API(setup) {
             ,   sub_timeout     = args['timeout']     || SUB_TIMEOUT
             ,   windowing       = args['windowing']   || SUB_WINDOWING
             ,   state           = args['state']
+            ,   V2              = args['v2']
             ,   heartbeat       = args['heartbeat'] || args['pnexpires']
             ,   restore         = args['restore'] || SUB_RESTORE;
 
@@ -1196,7 +1224,8 @@ function PN_API(setup) {
                     SELF['subscribe']({
                         'channel_group'  : channel_group + PRESENCE_SUFFIX,
                         'callback' : presence,
-                        'restore'  : restore
+                        'restore'  : restore,
+                        'v2'       : V2
                     });
 
                     // Presence Subscribed?
@@ -1295,6 +1324,250 @@ function PN_API(setup) {
                 if (PRESENCE_HB) data['heartbeat'] = PRESENCE_HB;
 
                 start_presence_heartbeat();
+
+                function subscribeSuccessHandlerV2(messages) {
+
+                    //SUB_RECEIVER = null;
+                    // Check for Errors
+                    if (!messages || (
+                        typeof messages == 'object' &&
+                        'error' in messages         &&
+                        messages['error']
+                    )) {
+                        errcb(messages['error']);
+                        return timeout( CONNECT, SECOND );
+                    }
+
+                    // User Idle Callback
+                    idlecb(messages[1]);
+
+                    // Restore Previous Connection Point if Needed
+                    TIMETOKEN = !TIMETOKEN               &&
+                                SUB_RESTORE              &&
+                                db['get'](SUBSCRIBE_KEY) || messages[1];
+
+                    /*
+                    // Connect
+                    each_channel_registry(function(registry){
+                        if (registry.connected) return;
+                        registry.connected = 1;
+                        registry.connect(channel.name);
+                    });
+                    */
+
+                    // Connect
+                    each_channel(function(channel){
+                        if (channel.connected) return;
+                        channel.connected = 1;
+                        channel.connect(channel.name);
+                    });
+
+                    // Connect for channel groups
+                    each_channel_group(function(channel_group){
+                        if (channel_group.connected) return;
+                        channel_group.connected = 1;
+                        channel_group.connect(channel_group.name);
+                    });
+
+                    if (RESUMED && !SUB_RESTORE) {
+                            TIMETOKEN = 0;
+                            RESUMED = false;
+                            // Update Saved Timetoken
+                            db['set']( SUBSCRIBE_KEY, 0 );
+                            timeout( _connect, windowing );
+                            return;
+                    }
+
+                    // Invoke Memory Catchup and Receive Up to 100
+                    // Previous Messages from the Queue.
+                    if (backfill) {
+                        TIMETOKEN = 10000;
+                        backfill  = 0;
+                    }
+
+                    // Update Saved Timetoken
+                    db['set']( SUBSCRIBE_KEY, messages[1] );
+
+                    // Route Channel <---> Callback for Message
+                    var next_callback = (function() {
+                        var channels = '';
+                        var channels2 = '';
+
+                        if (messages.length > 3) {
+                            channels  = messages[3];
+                            channels2 = messages[2];
+                        } else if (messages.length > 2) {
+                            channels = messages[2];
+                        } else {
+                            channels =  map(
+                                generate_channel_list(CHANNELS), function(chan) { return map(
+                                    Array(messages[0].length)
+                                    .join(',').split(','),
+                                    function() { return chan; }
+                                ) }).join(',')
+                        }
+
+                        var list  = channels.split(',');
+                        var list2 = (channels2)?channels2.split(','):[];
+
+                        return function() {
+                            var channel  = list.shift()||SUB_CHANNEL;
+                            var channel2 = list2.shift();
+
+                            var chobj = {};
+
+                            if (channel2) {
+                                if (channel && channel.indexOf('-pnpres') >= 0 
+                                    && channel2.indexOf('-pnpres') < 0) {
+                                    channel2 += '-pnpres';
+                                }
+                                chobj = CHANNEL_GROUPS[channel2] || CHANNELS[channel2] || {'callback' : function(){}};
+                            } else {
+                                chobj = CHANNELS[channel];
+                            }
+
+                            var r = [
+                                chobj
+                                .callback||SUB_CALLBACK,
+                                channel.split(PRESENCE_SUFFIX)[0]
+                            ];
+                            channel2 && r.push(channel2.split(PRESENCE_SUFFIX)[0]);
+                            return r;
+                        };
+                    })();
+
+                    var latency = detect_latency(+messages[1]);
+                    each( messages[0], function(msg) {
+                        var next = next_callback();
+                        var decrypted_msg = decrypt(msg,
+                            (CHANNELS[next[1]])?CHANNELS[next[1]]['cipher_key']:null);
+                        next[0] && next[0]( decrypted_msg, messages, next[2] || next[1], latency, next[1]);
+                    });
+
+                    timeout( _connect, windowing );
+                }
+
+                function subscribeSuccessHandlerV1(messages) {
+
+                    //SUB_RECEIVER = null;
+                    // Check for Errors
+                    if (!messages || (
+                        typeof messages == 'object' &&
+                        'error' in messages         &&
+                        messages['error']
+                    )) {
+                        errcb(messages['error']);
+                        return timeout( CONNECT, SECOND );
+                    }
+
+                    // User Idle Callback
+                    idlecb(messages[1]);
+
+                    // Restore Previous Connection Point if Needed
+                    TIMETOKEN = !TIMETOKEN               &&
+                                SUB_RESTORE              &&
+                                db['get'](SUBSCRIBE_KEY) || messages[1];
+
+                    /*
+                    // Connect
+                    each_channel_registry(function(registry){
+                        if (registry.connected) return;
+                        registry.connected = 1;
+                        registry.connect(channel.name);
+                    });
+                    */
+
+                    // Connect
+                    each_channel(function(channel){
+                        if (channel.connected) return;
+                        channel.connected = 1;
+                        channel.connect(channel.name);
+                    });
+
+                    // Connect for channel groups
+                    each_channel_group(function(channel_group){
+                        if (channel_group.connected) return;
+                        channel_group.connected = 1;
+                        channel_group.connect(channel_group.name);
+                    });
+
+                    if (RESUMED && !SUB_RESTORE) {
+                            TIMETOKEN = 0;
+                            RESUMED = false;
+                            // Update Saved Timetoken
+                            db['set']( SUBSCRIBE_KEY, 0 );
+                            timeout( _connect, windowing );
+                            return;
+                    }
+
+                    // Invoke Memory Catchup and Receive Up to 100
+                    // Previous Messages from the Queue.
+                    if (backfill) {
+                        TIMETOKEN = 10000;
+                        backfill  = 0;
+                    }
+
+                    // Update Saved Timetoken
+                    db['set']( SUBSCRIBE_KEY, messages[1] );
+
+                    // Route Channel <---> Callback for Message
+                    var next_callback = (function() {
+                        var channels = '';
+                        var channels2 = '';
+
+                        if (messages.length > 3) {
+                            channels  = messages[3];
+                            channels2 = messages[2];
+                        } else if (messages.length > 2) {
+                            channels = messages[2];
+                        } else {
+                            channels =  map(
+                                generate_channel_list(CHANNELS), function(chan) { return map(
+                                    Array(messages[0].length)
+                                    .join(',').split(','),
+                                    function() { return chan; }
+                                ) }).join(',')
+                        }
+
+                        var list  = channels.split(',');
+                        var list2 = (channels2)?channels2.split(','):[];
+
+                        return function() {
+                            var channel  = list.shift()||SUB_CHANNEL;
+                            var channel2 = list2.shift();
+
+                            var chobj = {};
+
+                            if (channel2) {
+                                if (channel && channel.indexOf('-pnpres') >= 0 
+                                    && channel2.indexOf('-pnpres') < 0) {
+                                    channel2 += '-pnpres';
+                                }
+                                chobj = CHANNEL_GROUPS[channel2] || CHANNELS[channel2] || {'callback' : function(){}};
+                            } else {
+                                chobj = CHANNELS[channel];
+                            }
+
+                            var r = [
+                                chobj
+                                .callback||SUB_CALLBACK,
+                                channel.split(PRESENCE_SUFFIX)[0]
+                            ];
+                            channel2 && r.push(channel2.split(PRESENCE_SUFFIX)[0]);
+                            return r;
+                        };
+                    })();
+
+                    var latency = detect_latency(+messages[1]);
+                    each( messages[0], function(msg) {
+                        var next = next_callback();
+                        var decrypted_msg = decrypt(msg,
+                            (CHANNELS[next[1]])?CHANNELS[next[1]]['cipher_key']:null);
+                        next[0] && next[0]( decrypted_msg, messages, next[2] || next[1], latency, next[1]);
+                    });
+
+                    timeout( _connect, windowing );
+                }
                 SUB_RECEIVER = xdr({
                     timeout  : sub_timeout,
                     callback : jsonp,
@@ -1307,131 +1580,11 @@ function PN_API(setup) {
                     },
                     data     : _get_url_params(data),
                     url      : [
-                        SUB_ORIGIN, 'subscribe',
+                        SUB_ORIGIN, ((V2)?'v2/':'') + 'subscribe',
                         SUBSCRIBE_KEY, encode(channels),
                         jsonp, TIMETOKEN
                     ],
-                    success : function(messages) {
-
-                        //SUB_RECEIVER = null;
-                        // Check for Errors
-                        if (!messages || (
-                            typeof messages == 'object' &&
-                            'error' in messages         &&
-                            messages['error']
-                        )) {
-                            errcb(messages['error']);
-                            return timeout( CONNECT, SECOND );
-                        }
-
-                        // User Idle Callback
-                        idlecb(messages[1]);
-
-                        // Restore Previous Connection Point if Needed
-                        TIMETOKEN = !TIMETOKEN               &&
-                                    SUB_RESTORE              &&
-                                    db['get'](SUBSCRIBE_KEY) || messages[1];
-
-                        /*
-                        // Connect
-                        each_channel_registry(function(registry){
-                            if (registry.connected) return;
-                            registry.connected = 1;
-                            registry.connect(channel.name);
-                        });
-                        */
-
-                        // Connect
-                        each_channel(function(channel){
-                            if (channel.connected) return;
-                            channel.connected = 1;
-                            channel.connect(channel.name);
-                        });
-
-                        // Connect for channel groups
-                        each_channel_group(function(channel_group){
-                            if (channel_group.connected) return;
-                            channel_group.connected = 1;
-                            channel_group.connect(channel_group.name);
-                        });
-
-                        if (RESUMED && !SUB_RESTORE) {
-                                TIMETOKEN = 0;
-                                RESUMED = false;
-                                // Update Saved Timetoken
-                                db['set']( SUBSCRIBE_KEY, 0 );
-                                timeout( _connect, windowing );
-                                return;
-                        }
-
-                        // Invoke Memory Catchup and Receive Up to 100
-                        // Previous Messages from the Queue.
-                        if (backfill) {
-                            TIMETOKEN = 10000;
-                            backfill  = 0;
-                        }
-
-                        // Update Saved Timetoken
-                        db['set']( SUBSCRIBE_KEY, messages[1] );
-
-                        // Route Channel <---> Callback for Message
-                        var next_callback = (function() {
-                            var channels = '';
-                            var channels2 = '';
-
-                            if (messages.length > 3) {
-                                channels  = messages[3];
-                                channels2 = messages[2];
-                            } else if (messages.length > 2) {
-                                channels = messages[2];
-                            } else {
-                                channels =  map(
-                                    generate_channel_list(CHANNELS), function(chan) { return map(
-                                        Array(messages[0].length)
-                                        .join(',').split(','),
-                                        function() { return chan; }
-                                    ) }).join(',')
-                            }
-
-                            var list  = channels.split(',');
-                            var list2 = (channels2)?channels2.split(','):[];
-
-                            return function() {
-                                var channel  = list.shift()||SUB_CHANNEL;
-                                var channel2 = list2.shift();
-
-                                var chobj = {};
-
-                                if (channel2) {
-                                    if (channel && channel.indexOf('-pnpres') >= 0 
-                                        && channel2.indexOf('-pnpres') < 0) {
-                                        channel2 += '-pnpres';
-                                    }
-                                    chobj = CHANNEL_GROUPS[channel2] || CHANNELS[channel2] || {'callback' : function(){}};
-                                } else {
-                                    chobj = CHANNELS[channel];
-                                }
-
-                                var r = [
-                                    chobj
-                                    .callback||SUB_CALLBACK,
-                                    channel.split(PRESENCE_SUFFIX)[0]
-                                ];
-                                channel2 && r.push(channel2.split(PRESENCE_SUFFIX)[0]);
-                                return r;
-                            };
-                        })();
-
-                        var latency = detect_latency(+messages[1]);
-                        each( messages[0], function(msg) {
-                            var next = next_callback();
-                            var decrypted_msg = decrypt(msg,
-                                (CHANNELS[next[1]])?CHANNELS[next[1]]['cipher_key']:null);
-                            next[0] && next[0]( decrypted_msg, messages, next[2] || next[1], latency, next[1]);
-                        });
-
-                        timeout( _connect, windowing );
-                    }
+                    success : (V2)?subscribeSuccessHandlerV2:subscribeSuccessHandlerV1
                 });
             }
 

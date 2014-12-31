@@ -11,13 +11,16 @@ var pubnub = PUBNUB.init({
 
 
 pubnub.subscribe({
-    'channel' :  Math.floor((Math.random() * 1000) + 1) +   'a.*',
+    'channel' :  'abcd',
+    'v2'      : true,
     'callback'       : function(r) {
         console.log(JSON.stringify(r));
     },
+    /*
     'presence'         : function(r) {
         console.log(JSON.stringify(r));  
-    },    
+    }, 
+    */   
     'error'         : function(r) {
         console.log(JSON.stringify(r));  
     },    

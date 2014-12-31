@@ -1,0 +1,20 @@
+<div id=pubnub></div>
+<script src="../pubnub.js"></script>
+<script>
+
+// INIT PubNub
+
+var pubnub = PUBNUB.init({
+    publish_key     : 'ds',
+    subscribe_key   : 'ds',
+    ortt            : true
+});
+
+for (var i = 0; i < 10; i++) {
+    pubnub.publish({
+        'channel' : 'abcd',
+        'message' : 'hi',
+        'meta'    : {"region":"midwest"}
+    });
+}
+</script>
