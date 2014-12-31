@@ -309,12 +309,14 @@ function PN_API(setup) {
     ,   COMPATIBLE_35 = setup['compatible_3.5']  || false
     ,   xdr           = setup['xdr']
     ,   params        = setup['params'] || {}
+    ,   get_current_time = setup['get_current_time'] || function() { return Date.now()}
     ,   error         = setup['error']      || function() {}
     ,   _is_online    = setup['_is_online'] || function() { return 1 }
     ,   jsonp_cb      = setup['jsonp_cb']   || function() { return 0 }
     ,   db            = setup['db']         || {'get': function(){}, 'set': function(){}}
     ,   CIPHER_KEY    = setup['cipher_key']
     ,   UUID          = setup['uuid'] || ( !setup['unique_uuid'] && db && db['get'](SUBSCRIBE_KEY+'uuid') || '')
+    ,   ORTT          = setup['ortt'] || false
     ,   _poll_timer
     ,   _poll_timer2;
 
@@ -540,6 +542,20 @@ function PN_API(setup) {
                 url      : url
             });
 
+    }
+    function pad(s, n) {
+        var l = s.length;
+
+        if (s.length < n) {
+            s += Array(n - s.length + 1).join('0');
+        }
+        return s;
+    }
+
+    function get_ortt() {
+        var now = get_current_time();
+
+        return pad(now.toString(), 17);
     }
 
     // Announce Leave Event
@@ -984,6 +1000,12 @@ function PN_API(setup) {
             ];
 
             params = { 'uuid' : UUID, 'auth' : auth_key }
+
+            if (ORTT) {
+                params['ortt'] = {
+                    't' : get_ortt()
+                }
+            }
 
             if (!store) params['store'] ="0"
 
