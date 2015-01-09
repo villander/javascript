@@ -1,3 +1,11 @@
+var nock = require('nock');
+
+nock.recorder.rec({
+  dont_print: true
+});
+
+
+
 var pubnub = PUBNUB.init({
     publish_key     : 'ds',
     subscribe_key   : 'ds',

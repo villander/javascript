@@ -2,30 +2,35 @@
 var assert = require('assert');
 var PUBNUB = require('../pubnub.js');
 var _ = require("underscore");
+var record = require('./record');
+
+
+
+
 var pubnub = PUBNUB.init({
     publish_key     : 'ds',
     subscribe_key   : 'ds',
-    origin          : 'pubsub.pubnub.com',
-    build_u       : true
+    origin          : 'pubsub1.pubnub.com',
+    uuid          : 'pubnub'
 });
 
 var pubnub_pam = PUBNUB.init({
     publish_key     : 'ds-pam',
     subscribe_key   : 'ds-pam',
     secret_key      : 'ds-pam',
-    origin          : 'pubsub.pubnub.com',
-    build_u       : true
+    uuid            : 'pubnub_pam',
+    origin          : 'pubsub1.pubnub.com'
 });
 
 var pubnub_enc = PUBNUB({
     publish_key     : 'ds',
     subscribe_key   : 'ds', 
     cipher_key      : 'enigma',
-    origin : 'pubsub.pubnub.com',
-    build_u       : true
+    uuid            : 'pubnub_enc',
+    origin : 'pubsub1.pubnub.com'
 }); 
 
-var channel = 'javascript-test-channel-' + Date.now();
+var channel = 'javascript-test-channel';
 var count = 0;
 
 var message_string = "Hi from Javascript";
@@ -52,7 +57,8 @@ function in_list(list,str) {
  }
 
 function get_random(max){
-    return Math.floor((Math.random()* (max || 1000000000)+1))
+    return 0;
+    //return Math.floor((Math.random()* (max || 1000000000)+1))
 }
 
 namespaces = []
@@ -86,6 +92,8 @@ describe('Pubnub', function() {
             }
         });
     })
+    var recorder = record('pubnub');
+    before(recorder.before);
 
     after(function(){
         for (var i in namespaces) {
@@ -101,7 +109,7 @@ describe('Pubnub', function() {
             })
         }
     })
-
+    after(recorder.after);
     describe('#subscribe()', function(){
         it('should pass plain text to callback on decryption error', function(done){
             var ch = channel + '-' + ++count;
@@ -126,6 +134,7 @@ describe('Pubnub', function() {
 
             })
         })
+
     })
 
     describe('#publish()', function(){
@@ -702,15 +711,17 @@ describe('Pubnub', function() {
         var auth_key = "abcd";
         var sub_key = 'ds-pam';
         var pubnub = PUBNUB.init({
-            origin            : 'pubsub.pubnub.com',
+            origin            : 'pubsub1.pubnub.com',
             publish_key       : 'ds-pam',
             subscribe_key     : 'ds-pam',
             secret_key        : 'ds-pam',
             build_u       : true
         });
+        /*
         for ( var i = 0; i < get_random(10); i++) {
             pubnub._add_param('a-' + get_random(1000) , Date.now());
         }
+        */
 
         before(function(){
             pubnub.revoke({
@@ -719,7 +730,7 @@ describe('Pubnub', function() {
         })
         
         it('should be able to grant read write access', function(done) {
-            var grant_channel_local = grant_channel + Date.now();
+            var grant_channel_local = grant_channel ;
             setTimeout(function() {
                 pubnub.grant({
                     'channel' : grant_channel_local,
@@ -779,7 +790,7 @@ describe('Pubnub', function() {
         
         it('should be able to grant read write access with space in auth key and channel', function(done) {
             var auth_key = "ab cd";
-            var grant_channel_local = grant_channel + "   " + Date.now();
+            var grant_channel_local = grant_channel;
             setTimeout(function() {
                 pubnub.grant({
                     channel : grant_channel_local,
@@ -839,7 +850,7 @@ describe('Pubnub', function() {
 
         
         it('should be able to grant read write access without auth key', function(done) {
-            var grant_channel_local = grant_channel + Date.now();
+            var grant_channel_local = grant_channel;
             setTimeout(function() {
                 pubnub.grant({
                     channel : grant_channel_local,
@@ -897,7 +908,7 @@ describe('Pubnub', function() {
         })
 
         it('should be able to grant read access revoke write access', function(done) {
-            var grant_channel_local = grant_channel + Date.now();
+            var grant_channel_local = grant_channel;
             setTimeout(function() {
                 pubnub.grant({
                     channel : grant_channel_local,
@@ -961,7 +972,7 @@ describe('Pubnub', function() {
             },5000);
         })
         it('should be able to revoke read access grant write access', function(done) {
-            var grant_channel_local = grant_channel + Date.now();
+            var grant_channel_local = grant_channel;
             setTimeout(function() {
                 pubnub.grant({
                     channel : grant_channel_local,
@@ -1023,7 +1034,7 @@ describe('Pubnub', function() {
             },5000);
         })
         it('should be able to revoke read and write access', function(done) {
-            var grant_channel_local = grant_channel + Date.now();
+            var grant_channel_local = grant_channel;
             setTimeout(function() {
                 pubnub.grant({
                     channel : grant_channel_local,
@@ -1089,7 +1100,7 @@ describe('Pubnub', function() {
             },5000);
         })
         it('should be able to revoke read and write access without auth key', function(done) {
-            var grant_channel_local = grant_channel + Date.now();
+            var grant_channel_local = grant_channel;
             setTimeout(function() {
                 pubnub.grant({
                     channel : grant_channel_local,
@@ -1152,10 +1163,10 @@ describe('Pubnub', function() {
             },5000);
         })
         it('should be able to revoke read write access at sub key level', function(done) {
-            var grant_channel_local = grant_channel + Date.now();
+            var grant_channel_local = grant_channel;
             var auth_key = "abcd";
             var pubnub = PUBNUB.init({
-                origin            : 'pubsub.pubnub.com',
+                origin            : 'pubsub1.pubnub.com',
                 publish_key       : 'ds-pam',
                 subscribe_key     : 'ds-pam',
                 secret_key        : 'ds-pam',
@@ -1220,10 +1231,10 @@ describe('Pubnub', function() {
             },5000);
         })
         it('should be able to grant read write access at sub key level', function(done) {
-            var grant_channel_local = grant_channel + Date.now();
+            var grant_channel_local = grant_channel;
            // var auth_key = "abcd";
             var pubnub = PUBNUB.init({
-                origin            : 'pubsub.pubnub.com',
+                origin            : 'pubsub1.pubnub.com',
                 publish_key       : 'ds-pam' ,
                 subscribe_key     : 'ds-pam' ,
                 secret_key        : 'ds-pam' ,
@@ -1289,7 +1300,7 @@ describe('Pubnub', function() {
         var revoke_channel = channel + '-revoke';
         var auth_key = "abcd";
         var pubnub = PUBNUB.init({
-            origin            : 'pubsub.pubnub.com',
+            origin            : 'pubsub1.pubnub.com',
             publish_key       :  'ds-pam',
             subscribe_key     :  'ds-pam',
             secret_key        :  'ds-pam',
@@ -1300,9 +1311,11 @@ describe('Pubnub', function() {
                 callback : function(r){}
             })
         })
+        /*
         for ( var i = 0; i < Math.floor((Math.random()*10)+1); i++) {
             pubnub._add_param('a-' + Math.floor((Math.random()*1000)+1) , Date.now());
         }
+        */
 
         it('should be able to revoke access', function(done) {
             setTimeout(function() {
@@ -1370,12 +1383,12 @@ describe('Pubnub', function() {
 
     })
     describe('#where_now()', function() {
-        var uuid = Date.now();
+        var uuid = 'where-now';
         var pubnub = PUBNUB.init({
             publish_key       : 'ds',  //'demo',
             subscribe_key     : 'ds', //'demo',
             uuid              :  uuid,
-            origin            : 'pubsub.pubnub.com',
+            origin            : 'pubsub1.pubnub.com',
             build_u       : true
         });
         this.timeout(80000);
@@ -1454,12 +1467,12 @@ describe('Pubnub', function() {
 
 
     describe('#state()', function() {
-        var uuid = Date.now();
+        var uuid = 'state';
         var pubnub = PUBNUB.init({
             publish_key       : 'ds', // 'demo',
             subscribe_key     : 'ds' , // 'demo',
             uuid              :  uuid,
-            origin            : 'pubsub.pubnub.com',
+            origin            : 'pubsub1.pubnub.com',
             build_u       : true
         });
         this.timeout(80000);
@@ -1550,13 +1563,13 @@ describe('Pubnub', function() {
         }) */
     }),
     describe('#subscribe()', function(){
-        var uuid  = Date.now()
+        var uuid  = 'subscribe'
         ,   uuid1 = uuid + '-1'
         ,   uuid2 = uuid + '-2'
         ,   uuid3 = uuid + '-3';
 
         var pubnub_pres = PUBNUB.init({
-            origin            : 'pubsub.pubnub.com',
+            origin            : 'pubsub1.pubnub.com',
             publish_key       : 'ds', // 'demo',
             subscribe_key     : 'ds', // 'demo',
             uuid              : uuid,
@@ -1564,7 +1577,7 @@ describe('Pubnub', function() {
         });
         
         it("should not generate spurious presence events when adding new channels to subscribe in_list", function(done) {
-            var ch1 = channel + '-subscribe-' + Date.now();
+            var ch1 = channel + '-subscribe-';
             var ch2 = ch1 + '-2';
             var events_count = 0;
             pubnub_pres.subscribe({ 
@@ -1621,28 +1634,28 @@ describe('Pubnub', function() {
         ,   uuid3 = uuid + '-3';
 
         var pubnub_pres = PUBNUB.init({
-            origin            : 'pubsub.pubnub.com',
+            origin            : 'pubsub1.pubnub.com',
             publish_key       : 'ds', // 'demo',
             subscribe_key     : 'ds',  // 'demo',
             uuid              : uuid,
             build_u           : true
         });
         var pubnub_pres_1 = PUBNUB.init({
-            origin            : 'pubsub.pubnub.com',
+            origin            : 'pubsub1.pubnub.com',
             publish_key       : 'ds', // 'demo',
             subscribe_key     : 'ds',  // 'demo',
             uuid              : uuid1,
             build_u           : true
         });
         var pubnub_pres_2 = PUBNUB.init({
-            origin            : 'pubsub.pubnub.com',
+            origin            : 'pubsub1.pubnub.com',
             publish_key       : 'ds', // 'demo',
             subscribe_key     : 'ds',  // 'demo',
             uuid              : uuid2,
             build_u           : true
         });
         var pubnub_pres_3 = PUBNUB.init({
-            origin            : 'pubsub.pubnub.com',
+            origin            : 'pubsub1.pubnub.com',
             publish_key       : 'ds', // 'demo',
             subscribe_key     : 'ds',  // 'demo',
             uuid              : uuid3,
@@ -1650,7 +1663,7 @@ describe('Pubnub', function() {
         });
 
         it("should return channel channel list with occupancy details and uuids for a subscribe key", function(done) {
-            var ch = channel + '-' + 'here-now-' + Date.now();
+            var ch = channel + '-' + 'here-now-';
             var ch1 = ch + '-1' ;
             var ch2 = ch + '-2' ;
             var ch3 = ch + '-3' ;
@@ -1730,7 +1743,7 @@ describe('Pubnub', function() {
         
         it("should return channel channel list with occupancy details and uuids + state for a subscribe key", function(done) {
 
-            var ch = channel + '-' + 'here-now-' + Date.now();
+            var ch = channel + '-' + 'here-now-';
             var ch1 = ch + '-1' ;
             var ch2 = ch + '-2' ;
             var ch3 = ch + '-3' ;
@@ -1878,7 +1891,7 @@ describe('Pubnub', function() {
 
         it("should return correct state for uuid in different channels", function(done) {
 
-            var ch = channel + '-' + 'here-now-' + Date.now();
+            var ch = channel + '-' + 'here-now-';
             var ch1 = ch + '-1' ;
             var ch2 = ch + '-2' ;
             var ch3 = ch + '-3' ;
@@ -2170,7 +2183,7 @@ describe('Pubnub', function() {
 
             it('should be able to add channels to channel groups', function(done){
                 var channels = 'a,b,c';
-                var channel_group = 'r1' + Date.now();
+                var channel_group = 'r1';
                 groups.push(channel_group);
 
                 pubnub.channel_group_add_channel({
@@ -2197,12 +2210,12 @@ describe('Pubnub', function() {
 
             })
             it('should be able to add channels to channel group with namespace', function(done){
-                var unique_suffix   = Date.now();
+                var unique_suffix   = '';
                 var channels        = 'a,b,c';
                 var namespace       = 'ns' + unique_suffix;
                 namespaces.push(namespace);
 
-                var channel_group   = namespace + ':' + 'r1' + unique_suffix;
+                var channel_group   = namespace + ':' + 'r1';
 
                 pubnub.channel_group_add_channel({
                     callback : function(r) {
@@ -2233,7 +2246,7 @@ describe('Pubnub', function() {
         describe('#channel_group_remove_channel()', function(){
             it('should be able to remove channels from channel group', function(done){
                 var channels = 'a,b,c';
-                var channel_group = 'r1' + Date.now();
+                var channel_group = 'r1';
                 groups.push(channel_group);
 
                 pubnub.channel_group_add_channel({
@@ -2283,7 +2296,7 @@ describe('Pubnub', function() {
 
             })
             it('should be able to remove channels to channel group with namespace', function(done){
-                var unique_suffix   = get_random();
+                var unique_suffix   = '';
                 var channels        = 'a,b,c';
                 var namespace       = 'ns' + unique_suffix;
                 var channel_group   = namespace + ':' + 'r1' + unique_suffix;
@@ -2342,7 +2355,7 @@ describe('Pubnub', function() {
 
             it('should be able to get all channel groups without namespace', function(done){
                 var channels = 'a,b,c';
-                var channel_group = 'r1' + Date.now();
+                var channel_group = 'r1';
 
                 pubnub.channel_group_add_channel({
                     callback : function(r) {
@@ -2368,7 +2381,7 @@ describe('Pubnub', function() {
 
             })
             it('should be able to get all channel groups with namespace', function(done){
-                var unique_suffix   = Date.now();
+                var unique_suffix   = '';
                 var channels        = 'a,b,c';
                 var namespace       = 'ns' + unique_suffix;
                 var channel_group   = namespace + ':' + 'r1' + unique_suffix ;
@@ -2399,7 +2412,7 @@ describe('Pubnub', function() {
         })
         describe('#channel_group_remove_group()', function(){
             it('should be able to remove channel group', function(done){
-                var unique_suffix   = Date.now();
+                var unique_suffix   = '';
                 var channels        = 'a,b,c';
                 var namespace       = 'ns' + unique_suffix;
                 var channel_group   = namespace + ':' + 'r1' + unique_suffix;
@@ -2439,7 +2452,7 @@ describe('Pubnub', function() {
         })
         describe('#channel_group_remove_namespace()', function(){
             it('should be able to remove namespace', function(done){
-                var unique_suffix   = Date.now();
+                var unique_suffix   = '';
                 var channels        = 'a,b,c';
                 var namespace       = 'ns' + unique_suffix;
                 var channel_group   = namespace + ':' + 'r1' + unique_suffix;
