@@ -90,8 +90,9 @@ function xdr( setup ) {
                 loaded = 1;
 
             clearTimeout(timer);
+            console.log(body);
             try       { response = JSON['parse'](body); }
-            catch (r) { return done(1); }
+            catch (r) { return done(1, '[6] ' + JSON.stringify(r || {"error":"Exception"})); }
             success(response);
         }
     ,   done    = function(failed, response) {
@@ -109,7 +110,7 @@ function xdr( setup ) {
             }
             failed && fail(response);
         }
-        ,   timer  = timeout( function(){done(1);} , xhrtme );
+        ,   timer  = timeout( function(){done(1, '[5] ' + JSON.stringify({"error":"Timeout"}));} , xhrtme );
 
     data['pnsdk'] = PNSDK;
 
@@ -121,6 +122,7 @@ function xdr( setup ) {
         payload = decodeURIComponent(setup.url.pop());
 
     var url = build_url( setup.url, data );
+    console.log(mode + ' ' + url);
     if (!ssl) ssl = (url.split('://')[0] == 'https')?true:false;
 
     url = '/' + url.split('/').slice(3).join('/');
@@ -140,8 +142,8 @@ function xdr( setup ) {
     try {
         request = (ssl ? https : http)['request'](options, function(response) {
             response.setEncoding('utf8');
-            response.on( 'error', function(){done(1, body || { "error" : "Network Connection Error"})});
-            response.on( 'abort', function(){done(1, body || { "error" : "Network Connection Error"})});
+            response.on( 'error', function(){done(1, '[2] ' + JSON.stringify(body || { "error" : "Network Connection Error"}))});
+            response.on( 'abort', function(){done(1, '[3] ' + JSON.stringify(body || { "error" : "Network Connection Error"}))});
             response.on( 'data', function (chunk) {
                 if (chunk) body += chunk;
             } );
@@ -154,9 +156,9 @@ function xdr( setup ) {
                     case 403:
                         try {
                             response = JSON['parse'](body);
-                            done(1,response);
+                            done(1, '[7] ' + JSON.stringify(response || {"error":"Error"}))
                         }
-                        catch (r) { return done(1, body); }
+                        catch (r) { return done(1, '[1] ' + JSON.stringify(body || r || { "error" : "Network Connection Error"}));}
                         return;
                     default:
                         break;
@@ -166,7 +168,7 @@ function xdr( setup ) {
         });
         request.timeout = xhrtme;
         request.on( 'error', function() {
-            done( 1, {"error":"Network Connection Error"} );
+            done( 1, '[4] ' + JSON.stringify({"error":"Network Connection Error"}));
         } );
 
         if (mode == 'POST') request.write(payload);
