@@ -316,6 +316,8 @@ function PN_API(setup) {
     ,   db            = setup['db']         || {'get': function(){}, 'set': function(){}}
     ,   CIPHER_KEY    = setup['cipher_key']
     ,   UUID          = setup['uuid'] || ( !setup['unique_uuid'] && db && db['get'](SUBSCRIBE_KEY+'uuid') || '')
+    ,   DEVICEID      = db && db['get']('pn_deviceid') || ''
+    ,   INSTANCEID    = ''
     ,   _poll_timer
     ,   _poll_timer2;
 
@@ -547,7 +549,7 @@ function PN_API(setup) {
     var SELF = {
         'LEAVE' : function( channel, blocking, auth_key, callback, error ) {
 
-            var data   = { 'uuid' : UUID, 'auth' : auth_key || AUTH_KEY }
+            var data   = { 'uuid' : UUID, 'auth' : auth_key || AUTH_KEY, 'instanceid' : INSTANCEID }
             ,   origin = nextorigin(ORIGIN)
             ,   callback = callback || function(){}
             ,   err      = error    || function(){}
@@ -585,7 +587,7 @@ function PN_API(setup) {
         },
         'LEAVE_GROUP' : function( channel_group, blocking, auth_key, callback, error ) {
 
-            var data   = { 'uuid' : UUID, 'auth' : auth_key || AUTH_KEY }
+            var data   = { 'uuid' : UUID, 'auth' : auth_key || AUTH_KEY, 'instanceid' : INSTANCEID }
             ,   origin = nextorigin(ORIGIN)
             ,   callback = callback || function(){}
             ,   err      = error    || function(){}
@@ -1283,7 +1285,7 @@ function PN_API(setup) {
                 // Connect to PubNub Subscribe Servers
                 _reset_offline();
 
-                var data = _get_url_params({ 'uuid' : UUID, 'auth' : auth_key });
+                var data = _get_url_params({ 'uuid' : UUID, 'auth' : auth_key, 'instanceid' : INSTANCEID });
 
                 if (channel_groups) {
                     data['channel-group'] = channel_groups;
@@ -1834,7 +1836,7 @@ function PN_API(setup) {
             var callback = args['callback'] || function() {}
             var err      = args['error']    || function() {}
             var jsonp    = jsonp_cb();
-            var data     = { 'uuid' : UUID, 'auth' : AUTH_KEY };
+            var data     = { 'uuid' : UUID, 'auth' : AUTH_KEY, 'instanceid' : INSTANCEID };
 
             var st = JSON['stringify'](STATE);
             if (st.length > 2) data['state'] = JSON['stringify'](STATE);
@@ -1918,7 +1920,10 @@ function PN_API(setup) {
     }
 
     if (!UUID) UUID = SELF['uuid']();
+    if (!DEVICEID) DEVICEID = SELF['uuid']();
+    if (!INSTANCEID) INSTANCEID = SELF['uuid']();
     db['set']( SUBSCRIBE_KEY + 'uuid', UUID );
+    db['set']( 'pn_deviceid', DEVICEID );
 
     _poll_timer  = timeout( _poll_online,  SECOND    );
     _poll_timer2 = timeout( _poll_online2, KEEPALIVE );
