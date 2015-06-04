@@ -6,16 +6,16 @@ Lists all groups
 
 ====== Parameters
 
-* namespace 
+* namespace (String) (Optional)
 
   namespace argument if provided, lists groups within a namespace
 
 
-* callback 
+* callback (Function) (Optional)
 
-  callback is invoked on successful response from backend for the operation.
+  callback is invoked on successful completion of method and gets result as argument.
 
-* error 
+* error (Function) (Optional)
 
   error is invoked on error response from backend, or a network error.
 
@@ -23,18 +23,24 @@ Lists all groups
 
 ==== channel_group_list_channels
 
+Lists channels in a group.
+
 ====== Parameters
 
-* namespace 
+* namespace (String) (Optional) 
 
-  namespace argument if provided, lists groups within a namespace
+  namespace argument if provided, is used to specify channel group within a namespace.
+  
 
+* channel_group (String) (Required)
 
-* callback 
+  channel group for which to list the channels
 
-  callback is invoked on successful response from backend for the operation.
+* callback (Optional) 
 
-* error 
+  callback is invoked on successful completion of method and gets result as argument.
+
+* error (Optional) 
 
   error is invoked on error response from backend, or a network error.
 
@@ -44,14 +50,21 @@ Lists all groups
 
 * namespace 
 
-  namespace argument if provided, lists groups within a namespace
+  namespace argument if provided, specifes channel group within a namespace
 
+* channel_group (String) (Required)
 
-* callback 
+  channel group from which to remove the channel
 
-  callback is invoked on successful response from backend for the operation.
+* channel/channels (String/Comma separated list/Array) (Required)
 
-* error 
+  Channel/Channels specifies channel or channels to be removed from the channel group.
+
+* callback (Optional) 
+
+  callback is invoked on successful completion of method and gets result as argument.
+
+* error (Optional) 
 
   error is invoked on error response from backend, or a network error.
   
@@ -61,82 +74,103 @@ Lists all groups
 
 * namespace 
 
-  namespace argument if provided, lists groups within a namespace
+  namespace argument if provided, specifies group to be removed within a namespace
 
+* channel_group (String) (Required)
 
-* callback 
+  channel group to be removed
 
-  callback is invoked on successful response from backend for the operation.
+* callback (Optional) 
 
-* error 
+  callback is invoked on successful completion of method and gets result as argument.
+
+* error (Optional) 
 
   error is invoked on error response from backend, or a network error.
 
 ==== channel_group_add_channel
 
-====== Parameters
-
-* namespace 
-
-  namespace argument if provided, lists groups within a namespace
-
-
-* callback 
-
-  callback is invoked on successful response from backend for the operation.
-
-* error 
-
-  error is invoked on error response from backend, or a network error.
-
-
-==== channel_group_cloak
+Adds channel/channels to a channel group.
 
 ====== Parameters
 
 * namespace 
 
-  namespace argument if provided, lists groups within a namespace
+  namespace argument if provided, specifes channel group within a namespace
+
+* channel_group (String) (Required)
+
+  channel group to which to add the channel
+
+* channel/channels (String/Comma separated list/Array) (Required)
+
+  Channel/Channels specifies channel or channels to be added to the channel group.
 
 
 * callback 
 
-  callback is invoked on successful response from backend for the operation.
+  callback is invoked on successful completion of method and gets result as argument.
 
 * error 
 
   error is invoked on error response from backend, or a network error.
+
 
 ==== channel_group_list_namespaces
 
+Lists all namespaces for the subscribe key.
+
 ====== Parameters
 
-* namespace 
+* callback (Optional) 
 
-  namespace argument if provided, lists groups within a namespace
+  callback is invoked on successful completion of method and gets result as argument.
 
-
-* callback 
-
-  callback is invoked on successful response from backend for the operation.
-
-* error 
+* error (Function) (Optional) 
 
   error is invoked on error response from backend, or a network error.
 
 ==== channel_group_remove_namespace
 
+Removes a namespace corresponding to a subscribe key.
+
 ====== Parameters
 
 * namespace 
 
-  namespace argument if provided, lists groups within a namespace
+  namespace to be removed.
 
 
-* callback 
+* callback (Function) (Optional)
 
-  callback is invoked on successful response from backend for the operation.
+  callback is invoked on successful completion of method and gets result as argument.
 
-* error 
+* error (Function) (Optional)
 
   error is invoked on error response from backend, or a network error.
+  
+  
+==== channel_group_cloak
+
+TODO: I need to recall what this is used for. 
+
+====== Parameters
+
+
+* callback (Function) (Optional)
+
+  callback is invoked on successful completion of method and gets result as argument.
+
+* error (Function) (Optional) 
+
+  error is invoked on error response from backend, or a network error.
+  
+=== New argument for Subscribe
+
+  New argument "channel_group" gets added to subscribe method. Specifying either channel or channel_group is mandatory.
+  channel_group can be a string, comma separated list, or an array.
+  
+=== New argument for Grant, Revoke, Audit
+
+  New argument "channel_group" gets added to all PAM methods. Specifying either channel or channel_group is mandatory.
+  channel_group can be a string, comma separated list, or an array.
