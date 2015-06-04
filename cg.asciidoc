@@ -1,1 +1,142 @@
 == Channel Groups APIs
+
+==== channel_group_list_groups
+
+Lists all groups 
+
+====== Parameters
+
+* namespace 
+
+  namespace argument if provided, lists groups within a namespace
+
+
+* callback 
+
+  callback is invoked on successful response from backend for the operation.
+
+* error 
+
+  error is invoked on error response from backend, or a network error.
+
+
+
+==== channel_group_list_channels
+
+====== Parameters
+
+* namespace 
+
+  namespace argument if provided, lists groups within a namespace
+
+
+* callback 
+
+  callback is invoked on successful response from backend for the operation.
+
+* error 
+
+  error is invoked on error response from backend, or a network error.
+
+==== channel_group_remove_channel
+
+====== Parameters
+
+* namespace 
+
+  namespace argument if provided, lists groups within a namespace
+
+
+* callback 
+
+  callback is invoked on successful response from backend for the operation.
+
+* error 
+
+  error is invoked on error response from backend, or a network error.
+  
+==== channel_group_remove_group
+
+====== Parameters
+
+* namespace 
+
+  namespace argument if provided, lists groups within a namespace
+
+
+* callback 
+
+  callback is invoked on successful response from backend for the operation.
+
+* error 
+
+  error is invoked on error response from backend, or a network error.
+
+==== channel_group_add_channel
+
+====== Parameters
+
+* namespace 
+
+  namespace argument if provided, lists groups within a namespace
+
+
+* callback 
+
+  callback is invoked on successful response from backend for the operation.
+
+* error 
+
+  error is invoked on error response from backend, or a network error.
+
+
+==== channel_group_cloak
+
+====== Parameters
+
+* namespace 
+
+  namespace argument if provided, lists groups within a namespace
+
+
+* callback 
+
+  callback is invoked on successful response from backend for the operation.
+
+* error 
+
+  error is invoked on error response from backend, or a network error.
+
+==== channel_group_list_namespaces
+
+====== Parameters
+
+* namespace 
+
+  namespace argument if provided, lists groups within a namespace
+
+
+* callback 
+
+  callback is invoked on successful response from backend for the operation.
+
+* error 
+
+  error is invoked on error response from backend, or a network error.
+
+==== channel_group_remove_namespace
+
+====== Parameters
+
+* namespace 
+
+  namespace argument if provided, lists groups within a namespace
+
+
+* callback 
+
+  callback is invoked on successful response from backend for the operation.
+
+* error 
+
+  error is invoked on error response from backend, or a network error.
