@@ -167,10 +167,10 @@ TODO: I need to recall what this is used for.
   
 === New argument for Subscribe
 
-  New argument "channel_group" gets added to subscribe method. Specifying either channel or channel_group is mandatory.
-  channel_group can be a string, comma separated list, or an array.
+  New argument "channel_group" gets added to subscribe method. Specifying either channel or 
+  channel_group is mandatory. channel_group can be a string, comma separated list, or an array.
   
 === New argument for Grant, Revoke, Audit
 
-  New argument "channel_group" gets added to all PAM methods. Specifying either channel or channel_group is mandatory.
-  channel_group can be a string, comma separated list, or an array.
+  New argument "channel_group" gets added to all PAM methods. Specifying either channel or
+  channel_group is mandatory. channel_group can be a string, comma separated list, or an array.
