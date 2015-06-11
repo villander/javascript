@@ -30,23 +30,47 @@ console.log    || (
  * LOCAL STORAGE OR COOKIE
  */
 var db = (function(){
-    var ls = window['localStorage'];
+    var store = {};
+    var ls = false;
+    try {
+        ls = window['localStorage'];
+    } catch (e) { }
+    var cookieGet = function(key) {
+        if (document.cookie.indexOf(key) == -1) return null;
+        return ((document.cookie||'').match(
+            RegExp(key+'=([^;]+)')
+        )||[])[1] || null;
+    };
+    var cookieSet = function( key, value ) {
+        document.cookie = key + '=' + value +
+            '; expires=Thu, 1 Aug 2030 20:00:00 UTC; path=/';
+    };
+    var cookieTest = (function() {
+        try {
+            cookieSet('pnctest', '1');
+            return cookieGet('pnctest') === '1';
+        } catch (e) {
+            return false;
+        }
+    }());
     return {
         'get' : function(key) {
             try {
                 if (ls) return ls.getItem(key);
-                if (document.cookie.indexOf(key) == -1) return null;
-                return ((document.cookie||'').match(
-                    RegExp(key+'=([^;]+)')
-                )||[])[1] || null;
-            } catch(e) { return }
+                if (cookieTest) return cookieGet(key);
+                return store[key];
+            } catch(e) {
+                return store[key];
+            }
         },
         'set' : function( key, value ) {
             try {
                 if (ls) return ls.setItem( key, value ) && 0;
-                document.cookie = key + '=' + value +
-                    '; expires=Thu, 1 Aug 2030 20:00:00 UTC; path=/';
-            } catch(e) { return }
+                if (cookieTest) cookieSet( key, value );
+                store[key] = value;
+            } catch(e) {
+                store[key] = value;
+            }
         }
     };
 })();
@@ -82,16 +106,6 @@ function search( elements, start) {
             list.push(node);
         } );
     });
-    return list;
-}
-
-function search_old(a) { 
-    var list = [];
-    each( a.split(/\s+/), function(el) {
-        each( (document).getElementsByTagName(el), function(node) {
-            list.push(node);
-        },1 );
-    }, 1);
     return list;
 }
 
@@ -135,7 +149,7 @@ function unbind( type, el, fun ) {
  * ====
  * head().appendChild(elm);
  */
-function head() { return search_old('head')[0] }
+function head() { return search('head')[0] }
 
 /**
  * ATTR
@@ -221,7 +235,7 @@ function xdr( setup ) {
     ,   id        = unique()
     ,   finished  = 0
     ,   xhrtme    = setup.timeout || DEF_TIMEOUT
-    ,   timer     = timeout( function(){done(1)}, xhrtme )
+    ,   timer     = timeout( function(){done(1, {"message" : "timeout"})}, xhrtme )
     ,   fail      = setup.fail    || function(){}
     ,   data      = setup.data    || {}
     ,   success   = setup.success || function(){}
@@ -250,7 +264,6 @@ function xdr( setup ) {
     if (!setup.blocking) script[ASYNC] = ASYNC;
 
     script.onerror = function() { done(1) };
-    data['pnsdk']  = PNSDK;
     script.src     = build_url( setup.url, data );
 
     attr( script, 'id', id );
@@ -285,11 +298,11 @@ function ajax( setup ) {
     ,   complete = 0
     ,   loaded   = 0
     ,   xhrtme   = setup.timeout || DEF_TIMEOUT
-    ,   timer    = timeout( function(){done(1)}, xhrtme )
+    ,   timer    = timeout( function(){done(1, {"message" : "timeout"})}, xhrtme )
     ,   fail     = setup.fail    || function(){}
     ,   data     = setup.data    || {}
     ,   success  = setup.success || function(){}
-    ,   async    = ( typeof(setup.blocking) === 'undefined' )
+    ,   async    = !(setup.blocking)
     ,   done     = function(failed,response) {
             if (complete) return;
             complete = 1;
@@ -312,31 +325,30 @@ function ajax( setup ) {
               new XDomainRequest()  ||
               new XMLHttpRequest();
 
-        xhr.onerror = xhr.onabort   = function(){ done(1, xhr.responseText || { "error" : "Network Connection Error"}) };
+        xhr.onerror = xhr.onabort   = function(e){ done(
+            1, e || (xhr && xhr.responseText) || { "error" : "Network Connection Error"}
+        ) };
         xhr.onload  = xhr.onloadend = finished;
         xhr.onreadystatechange = function() {
             if (xhr && xhr.readyState == 4) {
                 switch(xhr.status) {
-                    case 401:
-                    case 402:
-                    case 403:
+                    case 200:
+                        break;
+                    default:
                         try {
                             response = JSON['parse'](xhr.responseText);
                             done(1,response);
                         }
-                        catch (r) { return done(1, xhr.responseText); }
-                        break;
-                    default:
-                        break;
+                        catch (r) { return done(1, {status : xhr.status, payload : null, message : xhr.responseText}); }
+                        return;
                 }
             }
         }
-        if (async) xhr.timeout = xhrtme;
 
-        data['pnsdk'] = PNSDK;
         var url = build_url(setup.url,data);
 
         xhr.open( 'GET', url, async );
+        if (async) xhr.timeout = xhrtme;
         xhr.send();
     }
     catch(eee) {
@@ -349,12 +361,11 @@ function ajax( setup ) {
     return done;
 }
 
-
-
- // Test Connection State
+// Test Connection State
 function _is_online() {
     if (!('onLine' in navigator)) return 1;
-    return navigator['onLine'];
+    try       { return navigator['onLine'] }
+    catch (e) { return true }
 }
 
 /* =-====================================================================-= */
@@ -367,7 +378,8 @@ var PDIV          = $('pubnub') || 0
 ,   CREATE_PUBNUB = function(setup) {
 
     // Force JSONP if requested from user.
-    if (setup['jsonp']) XORIGN = 0;
+    if (setup['jsonp'])  XORIGN = 0;
+    else                 XORIGN = UA.indexOf('MSIE 6') == -1;
 
     var SUBSCRIBE_KEY = setup['subscribe_key'] || ''
     ,   KEEPALIVE     = (+setup['keepalive']   || DEF_KEEPALIVE)   * SECOND
@@ -380,9 +392,9 @@ var PDIV          = $('pubnub') || 0
     setup['error']      = setup['error'] || error;
     setup['_is_online'] = _is_online;
     setup['jsonp_cb']   = jsonp_cb;
-    setup['PNSDK']      = PNSDK;
     setup['hmac_SHA256']= get_hmac_SHA256;
     setup['crypto_obj'] = crypto_obj();
+    setup['params']     = { 'pnsdk' : PNSDK }
 
     var SELF = function(setup) {
         return CREATE_PUBNUB(setup);
@@ -405,6 +417,7 @@ var PDIV          = $('pubnub') || 0
     SELF['events']      = events;
     SELF['init']        = SELF;
     SELF['secure']      = SELF;
+    SELF['crypto_obj']  = crypto_obj(); // export to instance
 
 
     // Add Leave Functions
@@ -422,8 +435,9 @@ var PDIV          = $('pubnub') || 0
     // Return PUBNUB Socket Object
     return SELF;
 };
-CREATE_PUBNUB['init'] = CREATE_PUBNUB;
+CREATE_PUBNUB['init']   = CREATE_PUBNUB;
 CREATE_PUBNUB['secure'] = CREATE_PUBNUB;
+CREATE_PUBNUB['crypto_obj'] = crypto_obj(); // export to constructor
 
 // Bind for PUBNUB Readiness to Subscribe
 if (document.readyState === 'complete') {

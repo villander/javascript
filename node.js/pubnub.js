@@ -1,4 +1,4 @@
-// Version: 3.6.1
+// Version: 3.7.11
 var NOW             = 1
 ,   READY           = false
 ,   READY_BUFFER    = []
@@ -12,7 +12,7 @@ var NOW             = 1
 ,   PARAMSBIT       = '&'
 ,   PRESENCE_HB_THRESHOLD = 5
 ,   PRESENCE_HB_DEFAULT  = 30
-,   SDK_VER         = '3.6.1'
+,   SDK_VER         = '3.7.11'
 ,   REPL            = /{([\w\-]+)}/g;
 
 /**
@@ -33,7 +33,7 @@ var nextorigin_cache_busting = (function() {
         return origin.indexOf('pubsub.') > 0
             && origin.replace(
              'pubsub', 'ps' + (
-                failover ? uuid().split('-')[0] :
+                failover ? generate_uuid().split('-')[0] :
                 (++ori < max? ori : ori=1)
             ) ) || origin;
     }
@@ -118,9 +118,9 @@ function timeout( fun, wait ) {
 /**
  * uuid
  * ====
- * var my_uuid = uuid();
+ * var my_uuid = generate_uuid();
  */
-function uuid(callback) {
+function generate_uuid(callback) {
     var u = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,
     function(c) {
         var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
@@ -129,9 +129,10 @@ function uuid(callback) {
     if (callback) callback(u);
     return u;
 }
+
 function isArray(arg) {
-    var type = Object.prototype.toString.call(arg);
-    return   ( type === "[object Array]" || type === "[object NodeList]"  || type === "[object ScriptBridgingArrayProxyObject]");
+  return !!arg && typeof arg !== 'string' && (Array.isArray && Array.isArray(arg) || typeof(arg.length) === "number")
+  //return !!arg && (Array.isArray && Array.isArray(arg) || typeof(arg.length) === "number")
 }
 
 /**
@@ -139,10 +140,10 @@ function isArray(arg) {
  * ====
  * each( [1,2,3], function(item) { } )
  */
-function each( o, f, old_logic) {
+function each( o, f) {
     if ( !o || !f ) return;
 
-    if ( isArray(o) || ( old_logic && typeof o[0] != 'undefined' ) )
+    if ( isArray(o) )
         for ( var i = 0, l = o.length; i < l; )
             f.call( o[i], o[i], i++ );
     else
@@ -163,6 +164,13 @@ function map( list, fun ) {
     return fin;
 }
 
+
+function pam_encode(str) {
+  return encodeURIComponent(str).replace(/[!'()*~]/g, function(c) {
+    return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+  });
+}
+
 /**
  * ENCODE
  * ======
@@ -179,16 +187,34 @@ function generate_channel_list(channels, nopresence) {
     var list = [];
     each( channels, function( channel, status ) {
         if (nopresence) {
-            if(channel.search('-pnpres') < 0) { 
+            if(channel.search('-pnpres') < 0) {
                 if (status.subscribed) list.push(channel);
-            }    
+            }
         } else {
             if (status.subscribed) list.push(channel);
-        }  
+        }
     });
     return list.sort();
 }
 
+/**
+ * Generate Subscription Channel Groups List
+ * ==================================
+ * generate_channel_group_list(channels_groups object);
+ */
+function generate_channel_group_list(channel_groups, nopresence) {
+    var list = [];
+    each(channel_groups, function( channel_group, status ) {
+        if (nopresence) {
+            if(channel_group.search('-pnpres') < 0) {
+                if (status.subscribed) list.push(channel_group);
+            }
+        } else {
+            if (status.subscribed) list.push(channel_group);
+        }
+    });
+    return list.sort();
+}
 
 // PUBNUB READY TO CONNECT
 function ready() { timeout( function() {
@@ -197,36 +223,97 @@ function ready() { timeout( function() {
     each( READY_BUFFER, function(connect) { connect() } );
 }, SECOND ); }
 
+function PNmessage(args) {
+    msg = args || {'apns' : {}},
+    msg['getPubnubMessage'] = function() {
+        var m = {};
+
+        if (Object.keys(msg['apns']).length) {
+            m['pn_apns'] = {
+                    'aps' : {
+                        'alert' : msg['apns']['alert'] ,
+                        'badge' : msg['apns']['badge']
+                    }
+            }
+            for (var k in msg['apns']) {
+                m['pn_apns'][k] = msg['apns'][k];
+            }
+            var exclude1 = ['badge','alert'];
+            for (var k in exclude1) {
+                delete m['pn_apns'][exclude1[k]];
+            }
+        }
+
+
+
+        if (msg['gcm']) {
+            m['pn_gcm'] = {
+                'data' : msg['gcm']
+            }
+        }
+
+        for (var k in msg) {
+            m[k] = msg[k];
+        }
+        var exclude = ['apns','gcm','publish', 'channel','callback','error'];
+        for (var k in exclude) {
+            delete m[exclude[k]];
+        }
+
+        return m;
+    };
+    msg['publish'] = function() {
+
+        var m = msg.getPubnubMessage();
+
+        if (msg['pubnub'] && msg['channel']) {
+            msg['pubnub'].publish({
+                'message' : m,
+                'channel' : msg['channel'],
+                'callback' : msg['callback'],
+                'error' : msg['error']
+            })
+        }
+    };
+    return msg;
+}
+
 function PN_API(setup) {
     var SUB_WINDOWING =  +setup['windowing']   || DEF_WINDOWING
     ,   SUB_TIMEOUT   = (+setup['timeout']     || DEF_SUB_TIMEOUT) * SECOND
     ,   KEEPALIVE     = (+setup['keepalive']   || DEF_KEEPALIVE)   * SECOND
+    ,   TIME_CHECK    = setup['timecheck']     || 0
     ,   NOLEAVE       = setup['noleave']       || 0
     ,   PUBLISH_KEY   = setup['publish_key']   || 'demo'
     ,   SUBSCRIBE_KEY = setup['subscribe_key'] || 'demo'
     ,   AUTH_KEY      = setup['auth_key']      || ''
     ,   SECRET_KEY    = setup['secret_key']    || ''
-    ,   PNSDK         = setup['PNSDK']         || ''
     ,   hmac_SHA256   = setup['hmac_SHA256']
     ,   SSL           = setup['ssl']            ? 's' : ''
-    ,   ORIGIN        = 'http'+SSL+'://'+(setup['origin']||'pubsub.pubnub.com')
-    ,   ORIGINS       = setup['origins']
+    ,   ORIGIN1       = setup['origin']        || 'pubsub.pubnub.com'
+    ,   ORIGIN        = 'http'+SSL+'://'+(ORIGIN1)
+    ,   ORIGINS       = setup['origins']       || [ORIGIN1]
     ,   CONNECT       = function(){}
     ,   PUB_QUEUE     = []
+    ,   CLOAK         = true
     ,   TIME_DRIFT    = 0
     ,   SUB_CALLBACK  = 0
     ,   SUB_CHANNEL   = 0
     ,   SUB_RECEIVER  = 0
-    ,   SUB_RESTORE   = 0
+    ,   SUB_RESTORE   = setup['restore'] || 0
     ,   SUB_BUFF_WAIT = 0
     ,   TIMETOKEN     = 0
     ,   RESUMED       = false
     ,   CHANNELS      = {}
-    ,   CACHE_BUSTING = false
+    ,   CACHE_BUSTING = true
+    ,   CHANNEL_GROUPS       = {}
+    ,   SUB_ERROR     = function(){}
     ,   STATE         = {}
     ,   PRESENCE_HB_TIMEOUT  = null
-    ,   PRESENCE_HB          = validate_presence_heartbeat(setup['heartbeat'] || setup['pnexpires'] || 0, setup['error'])
-    ,   PRESENCE_HB_INTERVAL = setup['heartbeat_interval'] || PRESENCE_HB - 3
+    ,   PRESENCE_HB          = validate_presence_heartbeat(
+        setup['heartbeat'] || setup['pnexpires'] || 0, setup['error']
+    )
+    ,   PRESENCE_HB_INTERVAL = setup['heartbeat_interval'] || (PRESENCE_HB / 2) -1
     ,   PRESENCE_HB_RUNNING  = false
     ,   ORIGIN_HB_TIMEOUT     = null
     ,   ORIGIN_HB_INTERVAL    = setup['origin_heartbeat_interval'] || 60
@@ -239,6 +326,7 @@ function PN_API(setup) {
     ,   NO_WAIT_FOR_PENDING  = setup['no_wait_for_pending']
     ,   COMPATIBLE_35 = setup['compatible_3.5']  || false
     ,   xdr           = setup['xdr']
+    ,   params        = setup['params'] || {}
     ,   error         = setup['error']      || function() {}
     ,   _is_online    = setup['_is_online'] || function() { return 1 }
     ,   jsonp_cb      = setup['jsonp_cb']   || function() { return 0 }
@@ -246,7 +334,13 @@ function PN_API(setup) {
     ,   CIPHER_KEY    = setup['cipher_key']
     ,   origin_hb_callback       = setup['origin_heartbeat_callback']
     ,   origin_hb_error_callback = setup['origin_heartbeat_error_callback']    
-    ,   UUID          = setup['uuid'] || ( db && db['get'](SUBSCRIBE_KEY+'uuid') || '');
+    ,   UUID          = setup['uuid'] || ( !setup['unique_uuid'] && db && db['get'](SUBSCRIBE_KEY+'uuid') || '')
+    ,   USE_INSTANCEID = setup['instance_id'] || false
+    ,   INSTANCEID     = ''
+    ,   _poll_timer
+    ,   _poll_timer2;
+
+    if (PRESENCE_HB === 2) PRESENCE_HB_INTERVAL = 1;
 
     var crypto_obj    = setup['crypto_obj'] ||
         {
@@ -266,9 +360,9 @@ function PN_API(setup) {
     var nextorigin = function(domain,failover) {
         
         if (!ORIGINS) return ORIGIN;
-
+        //console.log(nextorigin_cache_busting('http'+SSL+'://' + domain, failover));
         if (CACHE_BUSTING)
-            return nextorigin_cache_busting(domain, failover);
+            return nextorigin_cache_busting('http'+SSL+'://' + domain, failover);
         else
             return nextorigin_ha(ORIGINS , failover);
     };
@@ -276,8 +370,43 @@ function PN_API(setup) {
     var STD_ORIGIN    = nextorigin(ORIGINS || ORIGIN, ++cur)
     ,   SUB_ORIGIN    = nextorigin(ORIGINS || ORIGIN, cur);
 
+    function _get_url_params(data) {
+        if (!data) data = {};
+        each( params , function( key, value ) {
+            if (!(key in data)) data[key] = value;
+        });
+        return data;
+    }
+
+    function _object_to_key_list(o) {
+        var l = []
+        each( o , function( key, value ) {
+            l.push(key);
+        });
+        return l;
+    }
+    function _object_to_key_list_sorted(o) {
+        return _object_to_key_list(o).sort();
+    }
+
+    function _get_pam_sign_input_from_params(params) {
+        var si = "";
+        var l = _object_to_key_list_sorted(params);
+
+        for (var i in l) {
+            var k = l[i]
+            si += k + "=" + pam_encode(params[k]) ;
+            if (i != l.length - 1) si += "&"
+        }
+        return si;
+    }
+
     function validate_presence_heartbeat(heartbeat, cur_heartbeat, error) {
         var err = false;
+
+        if (typeof heartbeat === 'undefined') {
+            return cur_heartbeat;
+        }
 
         if (typeof heartbeat === 'number') {
             if (heartbeat > PRESENCE_HB_THRESHOLD || heartbeat == 0)
@@ -317,7 +446,10 @@ function PN_API(setup) {
 
         clearTimeout(PRESENCE_HB_TIMEOUT);
 
-        if (!PRESENCE_HB_INTERVAL || PRESENCE_HB_INTERVAL >= 500 || PRESENCE_HB_INTERVAL < 1 || !generate_channel_list(CHANNELS,true).length){
+        if (!PRESENCE_HB_INTERVAL || PRESENCE_HB_INTERVAL >= 500 ||
+            PRESENCE_HB_INTERVAL < 1 ||
+            (!generate_channel_list(CHANNELS,true).length  && !generate_channel_group_list(CHANNEL_GROUPS, true).length ) )
+        {
             PRESENCE_HB_RUNNING = false;
             return;
         }
@@ -339,6 +471,7 @@ function PN_API(setup) {
     }
 
     function _reset(i,message) {
+        console.log('RESET');
         var old_origin = SUB_ORIGIN;
         var counter = (typeof i !== 'undefined')?i:++cur;
         cur = counter;
@@ -443,6 +576,20 @@ function PN_API(setup) {
 
         xdr(PUB_QUEUE.shift());
     }
+    function each_channel_group(callback) {
+        var count = 0;
+
+        each( generate_channel_group_list(CHANNEL_GROUPS), function(channel_group) {
+            var chang = CHANNEL_GROUPS[channel_group];
+
+            if (!chang) return;
+
+            count++;
+            (callback||function(){})(chang);
+        } );
+
+        return count;
+    }
 
     function each_channel(callback) {
         var count = 0;
@@ -460,26 +607,95 @@ function PN_API(setup) {
     }
     function _invoke_callback(response, callback, err) {
         if (typeof response == 'object') {
-            if (response['error'] && response['message'] && response['payload']) {
-                err({'message' : response['message'], 'payload' : response['payload']});
+            if (response['error']) {
+                var callback_data = {};
+
+                if (response['message']) {
+                    callback_data['message'] = response['message'];
+                }
+
+                if (response['payload']) {
+                    callback_data['payload'] = response['payload'];
+                }
+
+                err && err(callback_data);
                 return;
+
             }
             if (response['payload']) {
-                callback(response['payload']);
+                if (response['next_page'])
+                    callback && callback(response['payload'], response['next_page']);
+                else
+                    callback && callback(response['payload']);
                 return;
             }
         }
-        callback(response);
+        callback && callback(response);
     }
 
     function _invoke_error(response,err) {
+//<<<<<<< HEAD
+/*
         if (typeof response == 'object' && response['error'] && response['message'] && response['payload']) {
             err({'message' : response['message'], 'payload' : response['payload']});
         } else err(response);
+*/
+//=======
+
+        if (typeof response == 'object' && response['error']) {
+                var callback_data = {};
+
+                if (response['message']) {
+                    callback_data['message'] = response['message'];
+                }
+
+                if (response['payload']) {
+                    callback_data['payload'] = response['payload'];
+                }
+                
+                err && err(callback_data);
+                return;
+        } else {
+            err && err(response);
+        }
+    }
+    function CR(args, callback, url1, data) {
+            var callback        = args['callback']      || callback
+            ,   err             = args['error']         || error
+            ,   jsonp           = jsonp_cb();
+
+            data = data || {};
+            
+            if (!data['auth']) {
+                data['auth'] = args['auth_key'] || AUTH_KEY;
+            }
+            
+            var url = [
+                    STD_ORIGIN, 'v1', 'channel-registration',
+                    'sub-key', SUBSCRIBE_KEY
+                ];
+
+            url.push.apply(url,url1);
+            
+            if (jsonp) data['callback']              = jsonp;
+            
+            xdr({
+                callback : jsonp,
+                data     : _get_url_params(data),
+                success  : function(response) {
+                    _invoke_callback(response, callback, err);
+                },
+                fail     : function(response) {
+                    _invoke_error(response, err);
+                },
+                url      : url
+            });
+
     }
 
     // Announce Leave Event
     var SELF = {
+
         'add_origin' : function(origin) {
             ORIGINS.push(origin);
         },
@@ -490,9 +706,10 @@ function PN_API(setup) {
                 }
             }
         },
-        'LEAVE' : function( channel, blocking, callback, error ) {
 
-            var data   = { 'uuid' : UUID, 'auth' : AUTH_KEY }
+        'LEAVE' : function( channel, blocking, auth_key, callback, error ) {
+
+            var data   = { 'uuid' : UUID, 'auth' : auth_key || AUTH_KEY }
             ,   origin = nextorigin(ORIGINS || ORIGIN)
             ,   callback = callback || function(){}
             ,   err      = error    || function(){}
@@ -505,16 +722,18 @@ function PN_API(setup) {
                 if (!SSL)         return false;
                 if (jsonp == '0') return false;
             }
-            
+
             if (NOLEAVE)  return false;
 
             if (jsonp != '0') data['callback'] = jsonp;
+
+            if (USE_INSTANCEID) data['instanceid'] = INSTANCEID;
 
             xdr({
                 blocking : blocking || SSL,
                 timeout  : 2000,
                 callback : jsonp,
-                data     : data,
+                data     : _get_url_params(data),
                 success  : function(response) {
                     _invoke_callback(response, callback, err);
                 },
@@ -524,6 +743,48 @@ function PN_API(setup) {
                 url      : [
                     origin, 'v2', 'presence', 'sub_key',
                     SUBSCRIBE_KEY, 'channel', encode(channel), 'leave'
+                ]
+            });
+            return true;
+        },
+        'LEAVE_GROUP' : function( channel_group, blocking, auth_key, callback, error ) {
+
+            var data   = { 'uuid' : UUID, 'auth' : auth_key || AUTH_KEY }
+            ,   origin = nextorigin(ORIGIN)
+            ,   callback = callback || function(){}
+            ,   err      = error    || function(){}
+            ,   jsonp  = jsonp_cb();
+
+            // Prevent Leaving a Presence Channel Group
+            if (channel_group.indexOf(PRESENCE_SUFFIX) > 0) return true;
+
+            if (COMPATIBLE_35) {
+                if (!SSL)         return false;
+                if (jsonp == '0') return false;
+            }
+
+            if (NOLEAVE)  return false;
+
+            if (jsonp != '0') data['callback'] = jsonp;
+
+            if (channel_group && channel_group.length > 0) data['channel-group'] = channel_group;
+
+            if (USE_INSTANCEID) data['instanceid'] = INSTANCEID;
+
+            xdr({
+                blocking : blocking || SSL,
+                timeout  : 5000,
+                callback : jsonp,
+                data     : _get_url_params(data),
+                success  : function(response) {
+                    _invoke_callback(response, callback, err);
+                },
+                fail     : function(response) {
+                    _invoke_error(response, err);
+                },
+                url      : [
+                    origin, 'v2', 'presence', 'sub_key',
+                    SUBSCRIBE_KEY, 'channel', encode(','), 'leave'
                 ]
             });
             return true;
@@ -546,19 +807,26 @@ function PN_API(setup) {
         'get_heartbeat' : function() {
             return PRESENCE_HB;
         },
-        'set_heartbeat' : function(heartbeat) {
-            PRESENCE_HB = validate_presence_heartbeat(heartbeat, PRESENCE_HB_INTERVAL, error);
-            PRESENCE_HB_INTERVAL = (PRESENCE_HB - 3 >= 1)?PRESENCE_HB - 3:1;
+        
+        'set_heartbeat' : function(heartbeat, heartbeat_interval) {
+            PRESENCE_HB = validate_presence_heartbeat(heartbeat, PRESENCE_HB, error);
+            PRESENCE_HB_INTERVAL = heartbeat_interval || (PRESENCE_HB / 2) - 1;
+            if (PRESENCE_HB == 2) {
+                PRESENCE_HB_INTERVAL = 1;
+            }
             CONNECT();
             _presence_heartbeat();
         },
+        
         'get_heartbeat_interval' : function() {
             return PRESENCE_HB_INTERVAL;
         },
+        
         'set_heartbeat_interval' : function(heartbeat_interval) {
             PRESENCE_HB_INTERVAL = heartbeat_interval;
             _presence_heartbeat();
         },
+        
         'get_version' : function() {
             return SDK_VER;
         },
@@ -571,6 +839,136 @@ function PN_API(setup) {
         },
         'get_sub_origin' : function() {
             return SUB_ORIGIN;
+        },
+        'getGcmMessageObject' : function(obj) {
+            return {
+                'data' : obj
+            }
+        },
+        'getApnsMessageObject' : function(obj) {
+            var x =  {
+                'aps' : { 'badge' : 1, 'alert' : ''}
+            }
+            for (k in obj) {
+                k[x] = obj[k];
+            }
+            return x;
+        },
+        'newPnMessage' : function() {
+            var x = {};
+            if (gcm) x['pn_gcm'] = gcm;
+            if (apns) x['pn_apns'] = apns;
+            for ( k in n ) {
+                x[k] = n[k];
+            }
+            return x;
+        },
+
+        '_add_param' : function(key,val) {
+            params[key] = val;
+        },
+
+        'channel_group' : function(args, callback) {
+            var ns_ch       = args['channel_group']
+            ,   callback    = callback         || args['callback']
+            ,   channels    = args['channels'] || args['channel']
+            ,   cloak       = args['cloak']
+            ,   namespace
+            ,   channel_group
+            ,   url = []
+            ,   data = {}
+            ,   mode = args['mode'] || 'add';
+
+
+            if (ns_ch) {
+                var ns_ch_a = ns_ch.split(':');
+
+                if (ns_ch_a.length > 1) {
+                    namespace = (ns_ch_a[0] === '*')?null:ns_ch_a[0];
+
+                    channel_group = ns_ch_a[1];
+                } else {
+                    channel_group = ns_ch_a[0];
+                }
+            }
+
+            namespace && url.push('namespace') && url.push(encode(namespace));
+
+            url.push('channel-group');
+
+            if (channel_group && channel_group !== '*') {
+                url.push(channel_group);
+            }
+
+            if (channels ) {
+                if (isArray(channels)) {
+                    channels = channels.join(',');
+                }
+                data[mode] = channels;
+                data['cloak'] = (CLOAK)?'true':'false';
+            } else {
+                if (mode === 'remove') url.push('remove');
+            }
+
+            if (typeof cloak != 'undefined') data['cloak'] = (cloak)?'true':'false';
+
+            CR(args, callback, url, data);
+        },
+
+        'channel_group_list_groups' : function(args, callback) {
+            var namespace;
+
+            namespace = args['namespace'] || args['ns'] || args['channel_group'] || null;
+            if (namespace) {
+                args["channel_group"] = namespace + ":*";
+            }
+
+            SELF['channel_group'](args, callback);
+        },
+
+        'channel_group_list_channels' : function(args, callback) {
+            if (!args['channel_group']) return error('Missing Channel Group');
+            SELF['channel_group'](args, callback);
+        },
+
+        'channel_group_remove_channel' : function(args, callback) {
+            if (!args['channel_group']) return error('Missing Channel Group');
+            if (!args['channel'] && !args['channels'] ) return error('Missing Channel');
+
+            args['mode'] = 'remove';
+            SELF['channel_group'](args,callback);
+        },
+
+        'channel_group_remove_group' : function(args, callback) {
+            if (!args['channel_group']) return error('Missing Channel Group');
+            if (args['channel']) return error('Use channel_group_remove_channel if you want to remove a channel from a group.');
+
+            args['mode'] = 'remove';
+            SELF['channel_group'](args,callback);
+        },
+
+        'channel_group_add_channel' : function(args, callback) {
+           if (!args['channel_group']) return error('Missing Channel Group');
+           if (!args['channel'] && !args['channels'] ) return error('Missing Channel');
+            SELF['channel_group'](args,callback);
+        },
+
+        'channel_group_cloak' : function(args, callback) {
+            if (typeof args['cloak'] == 'undefined') {
+                callback(CLOAK);
+                return;
+            }
+            CLOAK = args['cloak'];
+            SELF['channel_group'](args,callback);
+        },
+
+        'channel_group_list_namespaces' : function(args, callback) {
+            var url = ['namespace'];
+            CR(args, callback, url);
+        },
+        'channel_group_remove_namespace' : function(args, callback) {
+            var url = ['namespace',args['namespace'],'remove'];
+            CR(args, callback, url);
         },
 
         /*
@@ -588,6 +986,7 @@ function PN_API(setup) {
             ,   auth_key         = args['auth_key'] || AUTH_KEY
             ,   cipher_key       = args['cipher_key']
             ,   channel          = args['channel']
+            ,   channel_group    = args['channel_group']
             ,   start            = args['start']
             ,   end              = args['end']
             ,   include_token    = args['include_token']
@@ -595,7 +994,7 @@ function PN_API(setup) {
             ,   jsonp            = jsonp_cb();
 
             // Make sure we have a Channel
-            if (!channel)       return error('Missing Channel');
+            if (!channel && !channel_group) return error('Missing Channel');
             if (!callback)      return error('Missing Callback');
             if (!SUBSCRIBE_KEY) return error('Missing Subscribe Key');
 
@@ -604,6 +1003,12 @@ function PN_API(setup) {
             params['reverse']     = reverse;
             params['auth']        = auth_key;
 
+            if (channel_group) {
+                params['channel-group'] = channel_group;
+                if (!channel) {
+                    channel = ','; 
+                }
+            }
             if (jsonp) params['callback']              = jsonp;
             if (start) params['start']                 = start;
             if (end)   params['end']                   = end;
@@ -612,7 +1017,7 @@ function PN_API(setup) {
             // Send Message
             xdr({
                 callback : jsonp,
-                data     : params,
+                data     : _get_url_params(params),
                 success  : function(response) {
                     if (typeof response == 'object' && response['error']) {
                         err({'message' : response['message'], 'payload' : response['payload']});
@@ -691,7 +1096,7 @@ function PN_API(setup) {
                 },
                 fail     : function() { callback([ 0, 'Disconnected' ]) },
                 url      : url,
-                data     : data
+                data     : _get_url_params(data)
             });
         },
 
@@ -708,9 +1113,14 @@ function PN_API(setup) {
         */
         'time' : function(callback) {
             var jsonp = jsonp_cb();
+
+            var data = { 'uuid' : UUID, 'auth' : AUTH_KEY }
+
+            if (USE_INSTANCEID) data['instanceid'] = INSTANCEID;
+
             xdr({
                 callback : jsonp,
-                data     : { 'uuid' : UUID, 'auth' : AUTH_KEY },
+                data     : _get_url_params(data),
                 timeout  : SECOND * 5,
                 url      : [STD_ORIGIN, 'time', jsonp],
                 success  : function(response) { callback(response[0]) },
@@ -725,22 +1135,29 @@ function PN_API(setup) {
             });
         */
         'publish' : function( args, callback ) {
-            var callback = callback || args['callback'] || function(){}
-            ,   msg      = args['message']
-            ,   channel  = args['channel']
+            var msg      = args['message'];
+            if (!msg) return error('Missing Message');
+
+            var callback = callback || args['callback'] || msg['callback'] || function(){}
+            ,   channel  = args['channel'] || msg['channel']
             ,   auth_key = args['auth_key'] || AUTH_KEY
             ,   cipher_key = args['cipher_key']
-            ,   err      = args['error'] || function() {}
+            ,   err      = args['error'] || msg['error'] || function() {}
+            ,   post     = args['post'] || false
+            ,   store    = ('store_in_history' in args) ? args['store_in_history']: true
             ,   jsonp    = jsonp_cb()
             ,   add_msg  = 'push'
             ,   url;
 
             if (args['prepend']) add_msg = 'unshift'
 
-            if (!msg)           return error('Missing Message');
             if (!channel)       return error('Missing Channel');
             if (!PUBLISH_KEY)   return error('Missing Publish Key');
             if (!SUBSCRIBE_KEY) return error('Missing Subscribe Key');
+
+            if (msg['getPubnubMessage']) {
+                msg = msg['getPubnubMessage']();
+            }
 
             // If trying to send Object
             msg = JSON['stringify'](encrypt(msg, cipher_key));
@@ -753,12 +1170,18 @@ function PN_API(setup) {
                 jsonp, encode(msg)
             ];
 
+            params = { 'uuid' : UUID, 'auth' : auth_key }
+
+            if (!store) params['store'] ="0"
+
+            if (USE_INSTANCEID) params['instanceid'] = INSTANCEID;
+
             // Queue Message Send
             PUB_QUEUE[add_msg]({
                 callback : jsonp,
                 timeout  : SECOND * 5,
                 url      : url,
-                data     : { 'uuid' : UUID, 'auth' : auth_key },
+                data     : _get_url_params(params),
                 fail     : function(response){
                     _invoke_error(response, err);
                     publish(1);
@@ -766,7 +1189,8 @@ function PN_API(setup) {
                 success  : function(response) {
                     _invoke_callback(response, callback, err);
                     publish(1);
-                }
+                },
+                mode     : (post)?'POST':'GET'
             });
 
             // Send Message
@@ -777,32 +1201,61 @@ function PN_API(setup) {
             PUBNUB.unsubscribe({ channel : 'my_chat' });
         */
         'unsubscribe' : function(args, callback) {
-            var channel = args['channel']
+            var channel       = args['channel']
+            ,   channel_group = args['channel_group']
+            ,   auth_key      = args['auth_key']    || AUTH_KEY
             ,   callback      = callback            || args['callback'] || function(){}
             ,   err           = args['error']       || function(){};
 
             TIMETOKEN   = 0;
-            SUB_RESTORE = 1;
+            //SUB_RESTORE = 1;    REVISIT !!!!
 
-            // Prepare Channel(s)
-            channel = map( (
-                channel.join ? channel.join(',') : ''+channel
-            ).split(','), function(channel) {
-                if (!CHANNELS[channel]) return;
-                return channel + ',' + channel + PRESENCE_SUFFIX;
-            } ).join(',');
+            if (channel) {
+                // Prepare Channel(s)
+                channel = map( (
+                    channel.join ? channel.join(',') : ''+channel
+                ).split(','), function(channel) {
+                    if (!CHANNELS[channel]) return;
+                    return channel + ',' + channel + PRESENCE_SUFFIX;
+                } ).join(',');
 
-            // Iterate over Channels
-            each( channel.split(','), function(channel) {
-                var CB_CALLED = true;
-                if (!channel) return;
-                if (READY) {
-                    CB_CALLED = SELF['LEAVE']( channel, 0 , callback, err);
-                }
-                if (!CB_CALLED) callback({action : "leave"});
-                CHANNELS[channel] = 0;
-                if (channel in STATE) delete STATE[channel];
-            } );
+                // Iterate over Channels
+                each( channel.split(','), function(ch) {
+                    var CB_CALLED = true;
+                    if (!ch) return;
+                    CHANNELS[ch] = 0;
+                    if (ch in STATE) delete STATE[ch];
+                    if (READY) {
+                        CB_CALLED = SELF['LEAVE']( ch, 0 , auth_key, callback, err);
+                    }
+                    if (!CB_CALLED) callback({action : "leave"});
+
+                    
+                } );
+            }
+
+            if (channel_group) {
+                // Prepare channel group(s)
+                channel_group = map( (
+                    channel_group.join ? channel_group.join(',') : ''+channel_group
+                ).split(','), function(channel_group) {
+                    if (!CHANNEL_GROUPS[channel_group]) return;
+                    return channel_group + ',' + channel_group + PRESENCE_SUFFIX;
+                } ).join(',');
+
+                // Iterate over channel groups
+                each( channel_group.split(','), function(chg) {
+                    var CB_CALLED = true;
+                    if (!chg) return;
+                    CHANNEL_GROUPS[chg] = 0;
+                    if (chg in STATE) delete STATE[chg];
+                    if (READY) {
+                        CB_CALLED = SELF['LEAVE_GROUP']( chg, 0 , auth_key, callback, err);
+                    }
+                    if (!CB_CALLED) callback({action : "leave"});
+
+                } );
+            }
 
             // Reset Connection if Count Less
             CONNECT();
@@ -815,24 +1268,27 @@ function PN_API(setup) {
             });
         */
         'subscribe' : function( args, callback ) {
-            var channel       = args['channel']
-            ,   callback      = callback            || args['callback']
-            ,   callback      = callback            || args['message']
-            ,   auth_key      = args['auth_key']    || AUTH_KEY
-            ,   connect       = args['connect']     || function(){}
-            ,   reconnect     = args['reconnect']   || function(){}
-            ,   disconnect    = args['disconnect']  || function(){}
-            ,   errcb         = args['error']       || function(){}
-            ,   idlecb        = args['idle']        || function(){}
-            ,   presence      = args['presence']    || 0
-            ,   noheresync    = args['noheresync']  || 0
-            ,   backfill      = args['backfill']    || 0
-            ,   timetoken     = args['timetoken']   || 0
-            ,   sub_timeout   = args['timeout']     || SUB_TIMEOUT
-            ,   windowing     = args['windowing']   || SUB_WINDOWING
-            ,   state         = args['state']
-            ,   heartbeat     = args['heartbeat'] || args['pnexpires']
-            ,   restore       = args['restore'];
+            var channel         = args['channel']
+            ,   channel_group   = args['channel_group']
+            ,   callback        = callback            || args['callback']
+            ,   callback        = callback            || args['message']
+            ,   connect         = args['connect']     || function(){}
+            ,   reconnect       = args['reconnect']   || function(){}
+            ,   disconnect      = args['disconnect']  || function(){}
+            ,   SUB_ERROR       = args['error']       || SUB_ERROR || function(){}
+            ,   idlecb          = args['idle']        || function(){}
+            ,   presence        = args['presence']    || 0
+            ,   noheresync      = args['noheresync']  || 0
+            ,   backfill        = args['backfill']    || 0
+            ,   timetoken       = args['timetoken']   || 0
+            ,   sub_timeout     = args['timeout']     || SUB_TIMEOUT
+            ,   windowing       = args['windowing']   || SUB_WINDOWING
+            ,   state           = args['state']
+            ,   heartbeat       = args['heartbeat'] || args['pnexpires']
+            ,   heartbeat_interval = args['heartbeat_interval']
+            ,   restore         = args['restore'] || SUB_RESTORE;
+
+            AUTH_KEY            = args['auth_key']    || AUTH_KEY;
 
             // Restore Enabled?
             SUB_RESTORE = restore;
@@ -841,73 +1297,131 @@ function PN_API(setup) {
             TIMETOKEN = timetoken;
 
             // Make sure we have a Channel
-            if (!channel)       return error('Missing Channel');
+            if (!channel && !channel_group) {
+                return error('Missing Channel');
+            }
+
             if (!callback)      return error('Missing Callback');
             if (!SUBSCRIBE_KEY) return error('Missing Subscribe Key');
 
-            if (heartbeat || heartbeat === 0) {
-                SELF['set_heartbeat'](heartbeat);
+            if (heartbeat || heartbeat === 0 || heartbeat_interval || heartbeat_interval === 0) {
+                SELF['set_heartbeat'](heartbeat, heartbeat_interval);
             }
 
             // Setup Channel(s)
-            each( (channel.join ? channel.join(',') : ''+channel).split(','),
-            function(channel) {
-                var settings = CHANNELS[channel] || {};
+            if (channel) {
+                each( (channel.join ? channel.join(',') : ''+channel).split(','),
+                function(channel) {
+                    var settings = CHANNELS[channel] || {};
 
-                // Store Channel State
-                CHANNELS[SUB_CHANNEL = channel] = {
-                    name         : channel,
-                    connected    : settings.connected,
-                    disconnected : settings.disconnected,
-                    subscribed   : 1,
-                    callback     : SUB_CALLBACK = callback,
-                    'cipher_key' : args['cipher_key'],
-                    connect      : connect,
-                    disconnect   : disconnect,
-                    reconnect    : reconnect
-                };
-                if (state) {
-                    if (channel in state) {
-                        STATE[channel] = state[channel];
-                    } else {
-                        STATE[channel] = state;
+                    // Store Channel State
+                    CHANNELS[SUB_CHANNEL = channel] = {
+                        name         : channel,
+                        connected    : settings.connected,
+                        disconnected : settings.disconnected,
+                        subscribed   : 1,
+                        callback     : SUB_CALLBACK = callback,
+                        'cipher_key' : args['cipher_key'],
+                        connect      : connect,
+                        disconnect   : disconnect,
+                        reconnect    : reconnect
+                    };
+
+                    if (state) {
+                        if (channel in state) {
+                            STATE[channel] = state[channel];
+                        } else {
+                            STATE[channel] = state;
+                        }
                     }
-                }
 
-                // Presence Enabled?
-                if (!presence) return;
+                    // Presence Enabled?
+                    if (!presence) return;
 
-                // Subscribe Presence Channel
-                SELF['subscribe']({
-                    'channel'  : channel + PRESENCE_SUFFIX,
-                    'callback' : presence,
-                    'restore'  : restore
-                });
+                    // Subscribe Presence Channel
+                    SELF['subscribe']({
+                        'channel'  : channel + PRESENCE_SUFFIX,
+                        'callback' : presence,
+                        'restore'  : restore
+                    });
 
-                // Presence Subscribed?
-                if (settings.subscribed) return;
+                    // Presence Subscribed?
+                    if (settings.subscribed) return;
 
-                // See Who's Here Now?
-                if (noheresync) return;
-                SELF['here_now']({
-                    'channel'  : channel,
-                    'callback' : function(here) {
-                        each( 'uuids' in here ? here['uuids'] : [],
-                        function(uid) { presence( {
-                            'action'    : 'join',
-                            'uuid'      : uid,
-                            'timestamp' : rnow(),
-                            'occupancy' : here['occupancy'] || 1
-                        }, here, channel ); } );
-                    }
-                });
-            } );
-            /*
+                    // See Who's Here Now?
+                    if (noheresync) return;
+                    SELF['here_now']({
+                        'channel'  : channel,
+                        'data'     : _get_url_params({ 'uuid' : UUID, 'auth' : AUTH_KEY }),
+                        'callback' : function(here) {
+                            each( 'uuids' in here ? here['uuids'] : [],
+                            function(uid) { presence( {
+                                'action'    : 'join',
+                                'uuid'      : uid,
+                                'timestamp' : Math.floor(rnow() / 1000),
+                                'occupancy' : here['occupancy'] || 1
+                            }, here, channel ); } );
+                        }
+                    });
+                } );
+            }
+            
+            // Setup Channel Groups
+            if (channel_group) {
+                each( (channel_group.join ? channel_group.join(',') : ''+channel_group).split(','),
+                function(channel_group) {
+                    var settings = CHANNEL_GROUPS[channel_group] || {};
+
+                    CHANNEL_GROUPS[channel_group] = {
+                        name         : channel_group,
+                        connected    : settings.connected,
+                        disconnected : settings.disconnected,
+                        subscribed   : 1,
+                        callback     : SUB_CALLBACK = callback,
+                        'cipher_key' : args['cipher_key'],
+                        connect      : connect,
+                        disconnect   : disconnect,
+                        reconnect    : reconnect
+                    };
+
+                    // Presence Enabled?
+                    if (!presence) return;
+
+                    // Subscribe Presence Channel
+                    SELF['subscribe']({
+                        'channel_group'  : channel_group + PRESENCE_SUFFIX,
+                        'callback' : presence,
+                        'restore'  : restore,
+                        'auth_key' : AUTH_KEY
+                    });
+
+                    // Presence Subscribed?
+                    if (settings.subscribed) return;
+
+                    // See Who's Here Now?
+                    if (noheresync) return;
+                    SELF['here_now']({
+                        'channel_group'  : channel_group,
+                        'data'           : _get_url_params({ 'uuid' : UUID, 'auth' : AUTH_KEY }),
+                        'callback' : function(here) {
+                            each( 'uuids' in here ? here['uuids'] : [],
+                            function(uid) { presence( {
+                                'action'    : 'join',
+                                'uuid'      : uid,
+                                'timestamp' : Math.floor(rnow() / 1000),
+                                'occupancy' : here['occupancy'] || 1
+                            }, here, channel_group ); } );
+                        }
+                    });
+                } );
+            }
+
             // Test Network Connection
             function _test_connection(success) {
                 if (success) {
+                    console.log('CONNECT AGAIN');
                     // Begin Next Socket Connection
-                    timeout( CONNECT, SECOND );
+                    timeout( CONNECT, windowing);
                 }
                 else {
                     // New Origin on Failed Connection
@@ -934,41 +1448,75 @@ function PN_API(setup) {
                         channel.disconnect(channel.name);
                     }
                 });
+                
+                // Disconnect & Reconnect for channel groups
+                each_channel_group(function(channel_group){
+                    // Reconnect
+                    if (success && channel_group.disconnected) {
+                        channel_group.disconnected = 0;
+                        return channel_group.reconnect(channel_group.name);
+                    }
+
+                    // Disconnect
+                    if (!success && !channel_group.disconnected) {
+                        channel_group.disconnected = 1;
+                        channel_group.disconnect(channel_group.name);
+                    }
+                });
             }
 
-            */
 
             // Evented Subscribe
             function _connect() {
-                var jsonp    = jsonp_cb()
-                ,   channels = generate_channel_list(CHANNELS).join(',');
+                var jsonp           = jsonp_cb()
+                ,   channels        = generate_channel_list(CHANNELS).join(',')
+                ,   channel_groups  = generate_channel_group_list(CHANNEL_GROUPS).join(',');
 
                 // Stop Connection
-                if (!channels) return;
+                if (!channels && !channel_groups) return;
+
+                if (!channels) channels = ',';
 
                 // Connect to PubNub Subscribe Servers
+                console.log('_connect');
                 _reset_offline();
 
-                var data = { 'uuid' : UUID, 'auth' : auth_key };
+                var data = _get_url_params({ 'uuid' : UUID, 'auth' : AUTH_KEY });
+
+                if (channel_groups) {
+                    data['channel-group'] = channel_groups;
+                }
+
 
                 var st = JSON.stringify(STATE);
                 if (st.length > 2) data['state'] = JSON.stringify(STATE);
 
                 if (PRESENCE_HB) data['heartbeat'] = PRESENCE_HB;
 
+                if (USE_INSTANCEID) data['instanceid'] = INSTANCEID;
+
                 start_presence_heartbeat();
-                start_origin_heartbeat();
-                start_optimal_origin_check_heartbeat();
+                !CACHE_BUSTING && start_origin_heartbeat();
+                !CACHE_BUSTING && start_optimal_origin_check_heartbeat();
                 SUB_RECEIVER = xdr({
                     timeout  : sub_timeout,
                     callback : jsonp,
                     fail     : function(response) {
-                        _invoke_error(response, errcb);
-                        //_origin_heartbeat();
-                        //SUB_RECEIVER = null;
-                        //SELF['time'](_test_connection);
+                        console.log('ERROR : ' + JSON.stringify(response));
+
+                        if (response && response['error'] && response['service']) {
+                            _invoke_error(response, SUB_ERROR);
+                            _test_connection(1);
+                        } else {
+                            
+                            SELF['time'](function(success){
+                                !success && ( _invoke_error(response, SUB_ERROR));
+                                _test_connection(success);
+                            });
+                            
+                        }
                     },
-                    data     : data,
+                    data     : _get_url_params(data),
                     url      : [
                         SUB_ORIGIN, 'subscribe',
                         SUBSCRIBE_KEY, encode(channels),
@@ -976,14 +1524,13 @@ function PN_API(setup) {
                     ],
                     success : function(messages) {
 
-                        //SUB_RECEIVER = null;
                         // Check for Errors
                         if (!messages || (
                             typeof messages == 'object' &&
                             'error' in messages         &&
                             messages['error']
                         )) {
-                            errcb(messages['error']);
+                            SUB_ERROR(messages['error']);
                             return timeout( CONNECT, SECOND );
                         }
 
@@ -994,6 +1541,15 @@ function PN_API(setup) {
                         TIMETOKEN = !TIMETOKEN               &&
                                     SUB_RESTORE              &&
                                     db['get'](SUBSCRIBE_KEY) || messages[1];
+
+                        /*
+                        // Connect
+                        each_channel_registry(function(registry){
+                            if (registry.connected) return;
+                            registry.connected = 1;
+                            registry.connect(channel.name);
+                        });
+                        */
 
                         // Connect
                         each_channel(function(channel){
@@ -1006,6 +1562,13 @@ function PN_API(setup) {
                                 channel.disconnected = 0;
                                 return channel.connect(channel.name);
                             }
+                        });
+
+                        // Connect for channel groups
+                        each_channel_group(function(channel_group){
+                            if (channel_group.connected) return;
+                            channel_group.connected = 1;
+                            channel_group.connect(channel_group.name);
                         });
 
                         if (RESUMED && !SUB_RESTORE) {
@@ -1029,33 +1592,58 @@ function PN_API(setup) {
 
                         // Route Channel <---> Callback for Message
                         var next_callback = (function() {
-                            var channels = (messages.length>2?messages[2]:map(
-                                generate_channel_list(CHANNELS), function(chan) { return map(
-                                    Array(messages[0].length)
-                                    .join(',').split(','),
-                                    function() { return chan; }
-                                ) }).join(','));
-                            var list = channels.split(',');
+                            var channels = '';
+                            var channels2 = '';
+
+                            if (messages.length > 3) {
+                                channels  = messages[3];
+                                channels2 = messages[2];
+                            } else if (messages.length > 2) {
+                                channels = messages[2];
+                            } else {
+                                channels =  map(
+                                    generate_channel_list(CHANNELS), function(chan) { return map(
+                                        Array(messages[0].length)
+                                        .join(',').split(','),
+                                        function() { return chan; }
+                                    ) }).join(',')
+                            }
+
+                            var list  = channels.split(',');
+                            var list2 = (channels2)?channels2.split(','):[];
 
                             return function() {
-                                var channel = list.shift()||SUB_CHANNEL;
-                                return [
-                                    (CHANNELS[channel]||{})
+                                var channel  = list.shift()||SUB_CHANNEL;
+                                var channel2 = list2.shift();
+
+                                var chobj = {};
+
+                                if (channel2) {
+                                    if (channel && channel.indexOf('-pnpres') >= 0 
+                                        && channel2.indexOf('-pnpres') < 0) {
+                                        channel2 += '-pnpres';
+                                    }
+                                    chobj = CHANNEL_GROUPS[channel2] || CHANNELS[channel2] || {'callback' : function(){}};
+                                } else {
+                                    chobj = CHANNELS[channel];
+                                }
+
+                                var r = [
+                                    chobj
                                     .callback||SUB_CALLBACK,
                                     channel.split(PRESENCE_SUFFIX)[0]
                                 ];
+                                channel2 && r.push(channel2.split(PRESENCE_SUFFIX)[0]);
+                                return r;
                             };
                         })();
 
                         var latency = detect_latency(+messages[1]);
                         each( messages[0], function(msg) {
                             var next = next_callback();
-                            var decrypted_msg = decrypt(msg,CHANNELS[next[1]]['cipher_key']);
-                            try {
-                                next[0]( JSON['parse'](decrypted_msg), messages, next[1], latency );
-                            } catch (e) {
-                                next[0]( decrypted_msg, messages, next[1], latency );
-                            }
+                            var decrypted_msg = decrypt(msg,
+                                (CHANNELS[next[1]])?CHANNELS[next[1]]['cipher_key']:null);
+                            next[0] && next[0]( decrypted_msg, messages, next[2] || next[1], latency, next[1]);
                         });
 
                         timeout( _connect, windowing );
@@ -1084,6 +1672,7 @@ function PN_API(setup) {
             ,   err      = args['error']    || function(){}
             ,   auth_key = args['auth_key'] || AUTH_KEY
             ,   channel  = args['channel']
+            ,   channel_group = args['channel_group']
             ,   jsonp    = jsonp_cb()
             ,   uuids    = ('uuids' in args) ? args['uuids'] : true
             ,   state    = args['state']
@@ -1105,9 +1694,16 @@ function PN_API(setup) {
 
             if (jsonp != '0') { data['callback'] = jsonp; }
 
+            if (channel_group) {
+                data['channel-group'] = channel_group;
+                !channel && url.push('channel') && url.push(','); 
+            }
+
+            if (USE_INSTANCEID) data['instanceid'] = INSTANCEID;
+
             xdr({
                 callback : jsonp,
-                data     : data,
+                data     : _get_url_params(data),
                 success  : function(response) {
                     _invoke_callback(response, callback, err);
                 },
@@ -1135,9 +1731,11 @@ function PN_API(setup) {
 
             if (jsonp != '0') { data['callback'] = jsonp; }
 
+            if (USE_INSTANCEID) data['instanceid'] = INSTANCEID;
+
             xdr({
                 callback : jsonp,
-                data     : data,
+                data     : _get_url_params(data),
                 success  : function(response) {
                     _invoke_callback(response, callback, err);
                 },
@@ -1160,39 +1758,57 @@ function PN_API(setup) {
             ,   state    = args['state']
             ,   uuid     = args['uuid'] || UUID
             ,   channel  = args['channel']
+            ,   channel_group = args['channel_group']
             ,   url
-            ,   data     = { 'auth' : auth_key };
+            ,   data     = _get_url_params({ 'auth' : auth_key });
 
             // Make sure we have a Channel
             if (!SUBSCRIBE_KEY) return error('Missing Subscribe Key');
             if (!uuid) return error('Missing UUID');
-            if (!channel) return error('Missing Channel');
+            if (!channel && !channel_group) return error('Missing Channel');
 
             if (jsonp != '0') { data['callback'] = jsonp; }
 
-            if (CHANNELS[channel] && CHANNELS[channel].subscribed) STATE[channel] = state;
+            if (typeof channel != 'undefined'
+                && CHANNELS[channel] && CHANNELS[channel].subscribed ) {
+                if (state) STATE[channel] = state;
+            }
+
+            if (typeof channel_group != 'undefined'
+                && CHANNEL_GROUPS[channel_group]
+                && CHANNEL_GROUPS[channel_group].subscribed
+                ) {
+                if (state) STATE[channel_group] = state;
+                data['channel-group'] = channel_group;
+
+                if (!channel) {
+                    channel = ',';
+                }
+            }
 
             data['state'] = JSON.stringify(state);
+
+            if (USE_INSTANCEID) data['instanceid'] = INSTANCEID;
 
             if (state) {
                 url      = [
                     STD_ORIGIN, 'v2', 'presence',
                     'sub-key', SUBSCRIBE_KEY,
-                    'channel', encode(channel),
+                    'channel', channel,
                     'uuid', uuid, 'data'
                 ]
             } else {
                 url      = [
                     STD_ORIGIN, 'v2', 'presence',
                     'sub-key', SUBSCRIBE_KEY,
-                    'channel', encode(channel),
+                    'channel', channel,
                     'uuid', encode(uuid)
                 ]
             }
 
             xdr({
                 callback : jsonp,
-                data     : data,
+                data     : _get_url_params(data),
                 success  : function(response) {
                     _invoke_callback(response, callback, err);
                 },
@@ -1217,17 +1833,17 @@ function PN_API(setup) {
             });
         */
         'grant' : function( args, callback ) {
-            var callback = args['callback'] || callback
-            ,   err      = args['error']    || function(){}
-            ,   channel  = args['channel']
-            ,   jsonp    = jsonp_cb()
-            ,   ttl      = args['ttl']
-            ,   r        = (args['read'] )?"1":"0"
-            ,   w        = (args['write'])?"1":"0"
-            ,   auth_key = args['auth_key'];
+            var callback        = args['callback'] || callback
+            ,   err             = args['error']    || function(){}
+            ,   channel         = args['channel']  || args['channels']
+            ,   channel_group   = args['channel_group']
+            ,   jsonp           = jsonp_cb()
+            ,   ttl             = args['ttl']
+            ,   r               = (args['read'] )?"1":"0"
+            ,   w               = (args['write'])?"1":"0"
+            ,   m               = (args['manage'])?"1":"0"
+            ,   auth_key        = args['auth_key'] || args['auth_keys'];
 
-            // Make sure we have a Channel
-            if (!channel)       return error('Missing Channel');
             if (!callback)      return error('Missing Callback');
             if (!SUBSCRIBE_KEY) return error('Missing Subscribe Key');
             if (!PUBLISH_KEY)   return error('Missing Publish Key');
@@ -1235,37 +1851,43 @@ function PN_API(setup) {
 
             var timestamp  = Math.floor(new Date().getTime() / 1000)
             ,   sign_input = SUBSCRIBE_KEY + "\n" + PUBLISH_KEY + "\n"
-                    + "grant" + "\n"
-                    + ((
-                        (auth_key && encode(auth_key).length > 0) ?
-                        "auth=" + encode(auth_key) + "&"          :
-                        ""
-                    ))
-                    + "channel=" + encode(channel) + "&"
-                    + "pnsdk=" + encode(PNSDK) + "&"
-                    + "r=" + r + "&"
-                    + "timestamp=" + encode(timestamp);
+                    + "grant" + "\n";
 
-            if (ttl || ttl === 0) sign_input += "&" + "ttl=" + ttl;
+            var data = {
+                'w'         : w,
+                'r'         : r,
+                'timestamp' : timestamp
+            };
+            if (args['manage']) {
+                data['m'] = m;
+            }
+            if (isArray(channel)) {
+                channel = channel['join'](',');
+            }
+            if (isArray(auth_key)) {
+                auth_key = auth_key['join'](',');
+            }
+            if (typeof channel != 'undefined' && channel != null && channel.length > 0) data['channel'] = channel;
+            if (typeof channel_group != 'undefined' && channel_group != null && channel_group.length > 0) {
+                data['channel-group'] = channel_group;
+            }
+            if (jsonp != '0') { data['callback'] = jsonp; }
+            if (ttl || ttl === 0) data['ttl'] = ttl;
 
-            sign_input += "&" + "w=" + w;
+            if (auth_key) data['auth'] = auth_key;
+
+            data = _get_url_params(data)
+
+            if (!auth_key) delete data['auth'];
+
+            sign_input += _get_pam_sign_input_from_params(data);
 
             var signature = hmac_SHA256( sign_input, SECRET_KEY );
 
             signature = signature.replace( /\+/g, "-" );
             signature = signature.replace( /\//g, "_" );
 
-            var data = {
-                'w'         : w,
-                'r'         : r,
-                'signature' : signature,
-                'channel'   : channel,
-                'timestamp' : timestamp
-            };
-
-            if (jsonp != '0') { data['callback'] = jsonp; }
-            if (ttl || ttl === 0) data['ttl'] = ttl;
-            if (auth_key) data['auth'] = auth_key;
+            data['signature'] = signature;
 
             xdr({
                 callback : jsonp,
@@ -1284,6 +1906,66 @@ function PN_API(setup) {
         },
 
         /*
+         PUBNUB.mobile_gw_provision ({
+         device_id: 'A655FBA9931AB',
+         op       : 'add' | 'remove',
+         gw_type  : 'apns' | 'gcm',
+         channel  : 'my_chat',
+         callback : fun,
+         error    : fun,
+         });
+         */
+
+        'mobile_gw_provision' : function( args ) {
+
+            var callback = args['callback'] || function(){}
+                ,   auth_key       = args['auth_key'] || AUTH_KEY
+                ,   err            = args['error'] || function() {}
+                ,   jsonp          = jsonp_cb()
+                ,   channel        = args['channel']
+                ,   op             = args['op']
+                ,   gw_type        = args['gw_type']
+                ,   device_id      = args['device_id']
+                ,   url;
+
+            if (!device_id)     return error('Missing Device ID (device_id)');
+            if (!gw_type)       return error('Missing GW Type (gw_type: gcm or apns)');
+            if (!op)            return error('Missing GW Operation (op: add or remove)');
+            if (!channel)       return error('Missing gw destination Channel (channel)');
+            if (!PUBLISH_KEY)   return error('Missing Publish Key');
+            if (!SUBSCRIBE_KEY) return error('Missing Subscribe Key');
+
+            // Create URL
+            url = [
+                STD_ORIGIN, 'v1/push/sub-key',
+                SUBSCRIBE_KEY, 'devices', device_id
+            ];
+
+            params = { 'uuid' : UUID, 'auth' : auth_key, 'type': gw_type};
+
+            if (op == "add") {
+                params['add'] = channel;
+            } else if (op == "remove") {
+                params['remove'] = channel;
+            }
+
+            if (USE_INSTANCEID) data['instanceid'] = INSTANCEID;
+
+            xdr({
+                callback : jsonp,
+                data     : params,
+                success  : function(response) {
+                    _invoke_callback(response, callback, err);
+                },
+                fail     : function(response) {
+                    _invoke_error(response, err);
+                },
+                url      : url
+            });
+
+        },
+
+        /*
             PUBNUB.audit({
                 channel  : 'my_chat',
                 callback : fun,
@@ -1294,11 +1976,12 @@ function PN_API(setup) {
             });
         */
         'audit' : function( args, callback ) {
-            var callback = args['callback'] || callback
-            ,   err      = args['error']    || function(){}
-            ,   channel  = args['channel']
-            ,   auth_key = args['auth_key']
-            ,   jsonp    = jsonp_cb();
+            var callback        = args['callback'] || callback
+            ,   err             = args['error']    || function(){}
+            ,   channel         = args['channel']
+            ,   channel_group   = args['channel_group']
+            ,   auth_key        = args['auth_key']
+            ,   jsonp           = jsonp_cb();
 
             // Make sure we have a Channel
             if (!callback)      return error('Missing Callback');
@@ -1311,22 +1994,26 @@ function PN_API(setup) {
                 + PUBLISH_KEY + "\n"
                 + "audit" + "\n";
 
-            if (auth_key)  sign_input += ("auth=" + encode(auth_key) + "&");
-            if (channel)   sign_input += ("channel=" + encode(channel) + "&") ;
+            var data = {'timestamp' : timestamp };
+            if (jsonp != '0') { data['callback'] = jsonp; }
+            if (typeof channel != 'undefined' && channel != null && channel.length > 0) data['channel'] = channel;
+            if (typeof channel_group != 'undefined' && channel_group != null && channel_group.length > 0) {
+                data['channel-group'] = channel_group;
+            }
+            if (auth_key) data['auth']    = auth_key;
 
-            sign_input += "pnsdk=" + encode(PNSDK) + "&" + "timestamp=" + timestamp;
+            data = _get_url_params(data);
+
+            if (!auth_key) delete data['auth'];
+
+            sign_input += _get_pam_sign_input_from_params(data);
 
             var signature = hmac_SHA256( sign_input, SECRET_KEY );
 
             signature = signature.replace( /\+/g, "-" );
             signature = signature.replace( /\//g, "_" );
 
-            var data = { 'signature' : signature, 'timestamp' : timestamp };
-
-            if (jsonp != '0') { data['callback'] = jsonp; }
-            if (channel)  data['channel'] = channel;
-            if (auth_key) data['auth']    = auth_key;
-
+            data['signature'] = signature;
             xdr({
                 callback : jsonp,
                 data     : data,
@@ -1363,6 +2050,12 @@ function PN_API(setup) {
         'get_uuid' : function() {
             return UUID;
         },
+        'isArray'  : function(arg) {
+            return isArray(arg);
+        },
+        'get_subscibed_channels' : function() {
+            return generate_channel_list(CHANNELS, true);
+        },
         'presence_heartbeat' : function(args) {
             var callback = args['callback'] || function() {}
             var err      = args['error']    || function() {}
@@ -1374,14 +2067,24 @@ function PN_API(setup) {
 
             if (PRESENCE_HB > 0 && PRESENCE_HB < 320) data['heartbeat'] = PRESENCE_HB;
 
+            if (jsonp != '0') { data['callback'] = jsonp; }
+
+            var channels        = encode(generate_channel_list(CHANNELS, true)['join'](','));
+            var channel_groups  = generate_channel_group_list(CHANNEL_GROUPS, true)['join'](',');
+
+            if (!channels) channels = ',';
+            if (channel_groups) data['channel-group'] = channel_groups;
+
+            if (USE_INSTANCEID) data['instanceid'] = INSTANCEID;
+
             xdr({
                 callback : jsonp,
-                data     : data,
+                data     : _get_url_params(data),
                 timeout  : SECOND * 5,
                 url      : [
                     STD_ORIGIN, 'v2', 'presence',
                     'sub-key', SUBSCRIBE_KEY,
-                    'channel' , encode(generate_channel_list(CHANNELS, true)['join'](',')),
+                    'channel' , channels,
                     'heartbeat'
                 ],
                 success  : function(response) {
@@ -1410,17 +2113,23 @@ function PN_API(setup) {
                 fail     : function(response) { _invoke_error(response, err); }
             });
         },
+        'stop_timers': function () {
+            clearTimeout(_poll_timer);
+            clearTimeout(_poll_timer2);
+        },
 
         // Expose PUBNUB Functions
         'xdr'           : xdr,
         'ready'         : ready,
         'db'            : db,
-        'uuid'          : uuid,
+        'uuid'          : generate_uuid,
         'map'           : map,
         'each'          : each,
         'each-channel'  : each_channel,
         'grep'          : grep,
-        'offline'       : function(){_reset_offline(1)},
+        'offline'       : function(){ _reset_offline(
+            1, { "message" : "Offline. Please check your network settings." })
+        },
         'supplant'      : supplant,
         'now'           : rnow,
         'unique'        : unique,
@@ -1431,32 +2140,45 @@ function PN_API(setup) {
         _is_online() || _reset_offline( 1, {
             "error" : "Offline. Please check your network settings. "
         });
-        timeout( _poll_online, SECOND );
+        _poll_timer && clearTimeout(_poll_timer);
+        _poll_timer = timeout( _poll_online, SECOND );
     }
     /*
     function _poll_online2() {
+        if (!TIME_CHECK) return;
         SELF['time'](function(success){
             detect_time_detla( function(){}, success );
             success || _reset_offline( 1, {
                 "error" : "Heartbeat failed to connect to Pubnub Servers." +
                     "Please check your network settings."
                 });
-            timeout( _poll_online2, KEEPALIVE );
+            _poll_timer2 && clearTimeout(_poll_timer2);
+            _poll_timer2 = timeout( _poll_online2, KEEPALIVE );
         });
     }
     */
 
     function _reset_offline(err, msg) {
+        console.log('RESET OFFLINE ' + err + ' : ' + msg);
+        SUB_RECEIVER && console.log(SUB_RECEIVER.name);
         SUB_RECEIVER && SUB_RECEIVER(err, msg);
         SUB_RECEIVER = null;
-    }
 
+        clearTimeout(_poll_timer);
+        //clearTimeout(_poll_timer2);
+    }
+    
     if (!UUID) UUID = SELF['uuid']();
+    if (!INSTANCEID) INSTANCEID = SELF['uuid']();
     db['set']( SUBSCRIBE_KEY + 'uuid', UUID );
 
-    timeout( _poll_online,  SECOND    );
-    //timeout( _poll_online2, KEEPALIVE );
-    PRESENCE_HB_TIMEOUT = timeout( start_presence_heartbeat, ( PRESENCE_HB_INTERVAL - 3 ) * SECOND ) ;
+    _poll_timer  = timeout( _poll_online,  SECOND    );
+    //_poll_timer2 = timeout( _poll_online2, KEEPALIVE );
+    PRESENCE_HB_TIMEOUT = timeout(
+        start_presence_heartbeat,
+        ( PRESENCE_HB_INTERVAL - 3 ) * SECOND
+    );
+
 
     // Detect Age of Message
     function detect_latency(tt) {
@@ -1515,16 +2237,36 @@ THE SOFTWARE.
 /**
  * UTIL LOCALS
  */
-var NOW                = 1
-,   http               = require('http')
-,   https              = require('https')
-,   XHRTME             = 310000
-,   DEF_TIMEOUT     = 10000
-,   SECOND          = 1000
-,   PNSDK           = 'PubNub-JS-' + 'Nodejs' + '/' +  '3.6.1'
-,   crypto           = require('crypto')
-,   XORIGN             = 1;
+var NOW                 = 1
+,   http                = require('http')
+,   https               = require('https')
+,   XHRTME              = 310000
+,   DEF_TIMEOUT         = 10000
+,   SECOND              = 1000
+,   PNSDK               = 'PubNub-JS-' + 'Nodejs' + '/' +  '3.7.11'
+,   crypto              = require('crypto')
+,   proxy               = null
+,   XORIGN              = 1
+,   keepAliveConfig     = {
+    keepAlive: true,
+    keepAliveMsecs: 300000,
+    maxSockets: 5
+}
+,   keepAliveAgent
+,   keepAliveAgentSSL;
 
+if (keepAliveIsEmbedded()) {
+    keepAliveAgent = new http.Agent(keepAliveConfig);
+    keepAliveAgentSSL = new https.Agent(keepAliveConfig);
+} else {
+    (function () {
+        var agent = require('agentkeepalive'),
+            agentSSL = agent.HttpsAgent;
+
+        keepAliveAgent = new agent(keepAliveConfig);
+        keepAliveAgentSSL = new agentSSL(keepAliveConfig);
+    })();
+}
 
 function get_hmac_SHA256(data, key) {
     return crypto.createHmac('sha256',
@@ -1548,16 +2290,18 @@ function error(message) { console['error'](message) }
  *     fail    : function() {}
  *  });
  */
+id = 1;
 function xdr( setup ) {
     var request
     ,   response
     ,   success  = setup.success || function(){}
     ,   fail     = setup.fail    || function(){}
-    ,   origin   = setup.origin || 'pubsub.pubnub.com'
     ,   ssl      = setup.ssl
     ,   failed   = 0
+    ,   ID       = id++
     ,   complete = 0
     ,   loaded   = 0
+    ,   mode     = setup['mode'] || 'GET'
     ,   data     = setup['data'] || {}
     ,   xhrtme   = setup.timeout || DEF_TIMEOUT
     ,   body = ''
@@ -1566,17 +2310,20 @@ function xdr( setup ) {
                 loaded = 1;
 
             clearTimeout(timer);
+            console.log(body);
             try       { response = JSON['parse'](body); }
-            catch (r) { return done(1); }
+            catch (r) { console.log('Exception');return done(1); }
             success(response);
         }
     ,   done    = function(failed, response) {
+            console.log('DONE ' + failed + ' : ' + JSON.stringify(response));
             if (complete) return;
                 complete = 1;
 
             clearTimeout(timer);
 
-            if (request) {
+            if (request /* && failed */) {
+                console.log(JSON.stringify('DONE request ' + request.hostname + ' ' + request.path));
                 request.on('error', function(){});
                 request.on('data', function(){});
                 request.on('end', function(){});
@@ -1584,37 +2331,48 @@ function xdr( setup ) {
                 request = null;
             }
             failed && fail(response);
+            console.log('DONE id : ' + id);
         }
-        ,   timer  = timeout( function(){done(1);} , xhrtme );
+        ,   timer  = timeout( function(){console.log('timeout');done(1);} , xhrtme );
 
     data['pnsdk'] = PNSDK;
 
-    var publish = setup.url[1] === 'publish';
-    var mode    = publish ? 'POST' : 'GET';
     var options = {};
-    var headers = {};
     var payload = '';
 
-    if (publish && mode == 'POST')
+    if (mode == 'POST')
         payload = decodeURIComponent(setup.url.pop());
 
     var url = build_url( setup.url, data );
+    console.log(url);
+
+    if (!ssl) ssl = (url.split('://')[0] == 'https');
+
     url = '/' + url.split('/').slice(3).join('/');
 
-    options.hostname = setup.url[0].split("//")[1];
-    options.port     = ssl ? 443 : 80;
-    options.path     = url;
+    var origin       = setup.url[0].split("//")[1];
+
+    options.hostname = proxy ? proxy.hostname : setup.url[0].split("//")[1];
+    options.port     = proxy ? proxy.port : ssl ? 443 : 80;
+    options.path     = proxy ? "http://" + origin + url : url;
+    options.headers  = proxy ? { 'Host': origin } : null;
     options.method   = mode;
-    options.agent    = false;
+    options.keepAlive= !!keepAliveAgent;
     options.body     = payload;
 
+    if (options.keepAlive && ssl) {
+        options.agent = keepAliveAgentSSL;
+    } else if (options.keepAlive) {
+        options.agent = keepAliveAgent;
+    }
 
     require('http').globalAgent.maxSockets = Infinity;
+
     try {
         request = (ssl ? https : http)['request'](options, function(response) {
             response.setEncoding('utf8');
-            response.on( 'error', function(){done(1, body || { "error" : "Network Connection Error"})});
-            response.on( 'abort', function(){done(1, body || { "error" : "Network Connection Error"})});
+            response.on( 'error', function(){console.log('ERROR');done(1, body || { "error" : "Network Connection Error 1"})});
+            response.on( 'abort', function(){console.log('ABORT');done(1, body || { "error" : "Network Connection Error 2"})});
             response.on( 'data', function (chunk) {
                 if (chunk) body += chunk;
             } );
@@ -1622,28 +2380,26 @@ function xdr( setup ) {
                 var statusCode = response.statusCode;
 
                 switch(statusCode) {
-                    case 401:
-                    case 402:
-                    case 403:
+                    case 200:
+                        break;
+                    default:
                         try {
                             response = JSON['parse'](body);
                             done(1,response);
                         }
-                        catch (r) { return done(1, body); }
+                        catch (r) { return done(1, {status : statusCode, payload : null, message : body}); }
                         return;
-                    default:
-                        break;
                 }
-
                 finished();
             });
         });
         request.timeout = xhrtme;
-        request.on( 'error', function() {
-            done( 1, {"error":"Network Connection Error"} );
+        request.on( 'error', function(r) {
+            done( 1, {"error":"Network Connection Error 3 " + JSON.stringify(r)} );
         } );
 
         if (mode == 'POST') request.write(payload);
+        console.log('SEND REQUEST : ' + id);
         request.end();
 
     } catch(e) {
@@ -1664,63 +2420,132 @@ var db = (function(){
             return store[key];
         },
         'set' : function( key, value ) {
-            db[key] = value;
+            store[key] = value;
         }
     };
 })();
 
 function crypto_obj() {
     var iv = "0123456789012345";
-    function get_padded_key(key) {
-        return crypto.createHash('sha256').update(key).digest("hex").slice(0,32);
+
+    var allowedKeyEncodings = ['hex', 'utf8', 'base64', 'binary'];
+    var allowedKeyLengths = [128, 256];
+    var allowedModes = ['ecb', 'cbc'];
+
+    var defaultOptions = {
+        encryptKey: true,
+        keyEncoding: 'utf8',
+        keyLength: 256,
+        mode: 'cbc'
+    };
+
+    function parse_options(options) {
+
+        // Defaults
+        options = options || {};
+        if (!options.hasOwnProperty('encryptKey')) options.encryptKey = defaultOptions.encryptKey;
+        if (!options.hasOwnProperty('keyEncoding')) options.keyEncoding = defaultOptions.keyEncoding;
+        if (!options.hasOwnProperty('keyLength')) options.keyLength = defaultOptions.keyLength;
+        if (!options.hasOwnProperty('mode')) options.mode = defaultOptions.mode;
+
+        // Validation
+        if (allowedKeyEncodings.indexOf(options.keyEncoding.toLowerCase()) == -1) options.keyEncoding = defaultOptions.keyEncoding;
+        if (allowedKeyLengths.indexOf(parseInt(options.keyLength, 10)) == -1) options.keyLength = defaultOptions.keyLength;
+        if (allowedModes.indexOf(options.mode.toLowerCase()) == -1) options.mode = defaultOptions.mode;
+
+        return options;
+
+    }
+
+    function decode_key(key, options) {
+        if (options.keyEncoding == 'base64' || options.keyEncoding == 'hex') {
+            return new Buffer(key, options.keyEncoding);
+        } else {
+            return key;
+        }
+    }
+
+    function get_padded_key(key, options) {
+        key = decode_key(key, options);
+        if (options.encryptKey) {
+            return crypto.createHash('sha256').update(key).digest("hex").slice(0,32);
+        } else {
+            return key;
+        }
+    }
+
+    function get_algorythm(options) {
+        return 'aes-' + options.keyLength + '-' + options.mode;
+    }
+
+    function get_iv(options) {
+        return (options.mode == 'cbc') ? iv : '';
     }
 
     return {
-        'encrypt' : function(input, key) {
+        'encrypt' : function(input, key, options) {
             if (!key) return input;
+            options = parse_options(options);
             var plain_text = JSON['stringify'](input);
-            var cipher = crypto.createCipheriv('aes-256-cbc', get_padded_key(key), iv);
+            var cipher = crypto.createCipheriv(get_algorythm(options), get_padded_key(key, options), get_iv(options));
             var base_64_encrypted = cipher.update(plain_text, 'utf8', 'base64') + cipher.final('base64');
             return base_64_encrypted || input;
         },
-        'decrypt' : function(input, key) {
+        'decrypt' : function(input, key, options) {
             if (!key) return input;
-            var decipher = crypto.createDecipheriv('aes-256-cbc', get_padded_key(key), iv);
+            options = parse_options(options);
+            var decipher = crypto.createDecipheriv(get_algorythm(options), get_padded_key(key, options), get_iv(options));
             try {
                 var decrypted = decipher.update(input, 'base64', 'utf8') + decipher.final('utf8');
             } catch (e) {
                 return null;
             }
-            return decrypted;
+            return JSON.parse(decrypted);
         }
     }
 }
 
+function keepAliveIsEmbedded() {
+    return 'EventEmitter' in http.Agent.super_;
+}
 
 
 var CREATE_PUBNUB = function(setup) {
+    proxy = setup['proxy'];
     setup['xdr'] = xdr;
     setup['db'] = db;
     setup['error'] = setup['error'] || error;
-    setup['PNSDK'] = PNSDK;
     setup['hmac_SHA256'] = get_hmac_SHA256;
     setup['crypto_obj'] = crypto_obj();
-    SELF = function(setup) {
-        return CREATE_PUBNUB(setup);
+    setup['params'] = {'pnsdk' : PNSDK};
+
+    if (setup['keepAlive'] === false) {
+      keepAliveAgent = undefined;
     }
+
+    var SELF = function(setup) {
+        return CREATE_PUBNUB(setup);
+    };
+
     var PN = PN_API(setup);
+
     for (var prop in PN) {
         if (PN.hasOwnProperty(prop)) {
             SELF[prop] = PN[prop];
         }
     }
+
     SELF.init = SELF;
     SELF.secure = SELF;
+    SELF.crypto_obj = crypto_obj();
     SELF.ready();
-    return SELF;
-}
-CREATE_PUBNUB.init = CREATE_PUBNUB;
 
-CREATE_PUBNUB.unique = unique
+    return SELF;
+};
+
+CREATE_PUBNUB.init = CREATE_PUBNUB;
+CREATE_PUBNUB.unique = unique;
 CREATE_PUBNUB.secure = CREATE_PUBNUB;
-module.exports = CREATE_PUBNUB
+CREATE_PUBNUB.crypto_obj = crypto_obj();
+module.exports = CREATE_PUBNUB;
+module.exports.PNmessage = PNmessage;

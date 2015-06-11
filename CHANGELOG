@@ -1,3 +1,73 @@
+5-18-15 * 3.7.11
+. fixed error messages on sleep and resume
+. custom AES implementation replaced with CryptoJS
+. fix bug where auth_key given as param to subscribe method was not replacing global auth key
+. added batch grant support
+. fix for wildcard grant
+. heartbeat setting moved to init
+. fix node.js 0.10 SSL mode with agentkeepalive
+. multi tab presence support
+. fix for auth key not being sent with few requests
+. fix for issue on IE in error callback of subscribe
+
+
+1-15-15 * 3.7.8
+. fixed bug where 403s (PAM Access Denied) do not fire error callback
+
+1-1-15 * 3.7.7
+. time pings disabled by default
+. leave with channel groups bug fixed
+. checking for online (keepalive) every 3 to 60s
+
+12-24-14 * 3.7.6
+. crypto calls are now available in min and non-versioned builds
+. heartbeats not being sent correctly with channel groups
+. exposing isArray, getSubscribedChannels public methods
+. adding auth (PAM) support for channel groups
+. added GCM/APNS provisioning (Mobile Gateway) calls
+. fixed issue where client may not recconet when waking from sleep on Mac on Chrome
+. handling of presence events when they arrive in via wildcard subscribes
+. added disconnect and reconnect callback functionality for channel groups
+. unsubscribe callback was not always called fix
+. double pnpres channel name append fix
+
+10-30-14 * 3.7.2
+. Only bower.json changes, same as 3.7.1 logic-wise
+
+10-30-14 * 3.7.1 * 708e0
+. Channel Groups Support
+. Exception handling when local-storage has been disabled on the web browser
+. bower now pointing to versioned files
+
+7-8-14 * 3.6.7 * 1fa0b
+. GCM envelope support
+. APNS envelope support
+. PNMessage structure introduced for supporting OO GCM/APNS message sending
+
+6-16-14 * 3.6.5 * c9f52629bd06d4259f0e33617a9c988be033849f
+. fix for subscribing to presence only channel
+. fix for jsonp heartbeat
+. channel is no longer mandatory for PAM
+
+5-08-14 * 3.6.4 * e02160be2b046e1b76fcf3e11c86bb7b80192a77
+. fixes bug where ssl settings were not getting applied for node.js 
+
+5-01-14 * 3.6.3 * d8e1ebb15dc8b644b8e0430b0859368f35bdb72f
+. Improved isArray logic
+. Added HTTP Proxy Support for Node.JS
+
+4-04-14 * 3.6.2 * 57fec62ad09272e628060e722aef74267ce68c0f
+. WebHook example added
+. Pam / JSONP Fix for Chrome
+
+3-13-14 * NEW VERSION 3.6.1 *
+. Presence V3 Features
+. Global cipher key feature
+. crypto.js is now automatically merged into pubnub.js. No need to manually include it anymore.
+. .secure() now aliases to .init() for bw compatibility, but its no longer needed.
+. fixed blocking leave bug in Firefox
+. crypto support for Titanium
+
 11-9-13 * NEW VERSION 3.5.4.8 *
 . make encryption methods public to easier implement into your own app logic
 . in some cases, multiple subscribe requests are made in node.js with presence

@@ -1,6 +1,6 @@
 # PubNub Node.JS SDK and NPM 
 
-Full documentation availabe - https://github.com/pubnub/javascript/blob/master/README.md
+PubNub for JS Docs have been moved to: http://www.pubnub.com/docs/javascript/javascript-sdk.html
 
 ## PubNub Node.js Quick Usage
 
@@ -18,9 +18,21 @@ npm install pubnub
 #### Example Usage
 
 ```javascript
-var pubnub = require("pubnub").init({
+var pubnub = require("pubnub")({
+    ssl           : true,  // <- enable TLS Tunneling over TCP
     publish_key   : "demo",
     subscribe_key : "demo"
+});
+
+/* ---------------------------------------------------------------------------
+Publish Messages
+--------------------------------------------------------------------------- */
+var message = { "some" : "data" };
+pubnub.publish({ 
+    channel   : 'my_channel',
+    message   : message,
+    callback  : function(e) { console.log( "SUCCESS!", e ); },
+    error     : function(e) { console.log( "FAILED! RETRY PUBLISH!", e ); }
 });
 
 /* ---------------------------------------------------------------------------
@@ -43,4 +55,6 @@ stdin.on( 'data', function(chunk) {
         message : ''+chunk
     });
 });
+
+
 ```

@@ -119,24 +119,22 @@ function xdr( setup ) {
         xhr.onreadystatechange = function() {
             if (xhr.readyState == 4) {
                 switch(xhr.status) {
-                    case 401:
-                    case 402:
-                    case 403:
+                    case 200:
+                        break;
+                    default:
                         try {
                             response = JSON['parse'](xhr.responseText);
                             done(1,response);
                         }
-                        catch (r) { return done(1, xhr.responseText); }
-                        break;
-                    default:
-                        break;
+                        catch (r) { return done(1, {status : xhr.status, payload : null, message : xhr.responseText}); }
+                        return;
                 }
             }
         }
-        if (async) xhr.timeout = XHRTME;
         data['pnsdk'] = PNSDK;
         url = build_url(setup.url, data);
         xhr.open( 'GET', url, async);
+        if (async) xhr.timeout = XHRTME;
         xhr.send();
     }
     catch(eee) {
@@ -289,9 +287,9 @@ function CREATE_PUBNUB(setup) {
     setup['db'] = db;
     setup['xdr'] = xdr;
     setup['error'] = setup['error'] || error;
-    setup['PNSDK']      = PNSDK;
     setup['hmac_SHA256']= get_hmac_SHA256;
     setup['crypto_obj'] = crypto_obj();
+    setup['params']      = { 'pnsdk' : PNSDK }
 
     SELF = function(setup) {
         return CREATE_PUBNUB(setup);
@@ -310,25 +308,32 @@ function CREATE_PUBNUB(setup) {
     SELF['bind'] = bind;
     SELF['css'] = css;
     SELF['create'] = create;
+    SELF['crypto_obj'] = crypto_obj();
 
-
-    // Add Leave Functions
-    bind( 'beforeunload', window, function() {
-        SELF['each-channel'](function(ch){ SELF['LEAVE']( ch.name, 1 ) });
-        return true;
-    } );
+    if (typeof(window) !== 'undefined'){
+        bind( 'beforeunload', window, function() {
+            SELF['each-channel'](function(ch){ SELF['LEAVE']( ch.name, 1 ) });
+            return true;
+        });
+    }
 
     // Return without Testing
     if (setup['notest']) return SELF;
 
-    bind( 'offline', window,   SELF['_reset_offline'] );
-    bind( 'offline', document, SELF['_reset_offline'] );
+    if (typeof(window) !== 'undefined'){
+        bind( 'offline', window,   SELF['_reset_offline'] );
+    }
+
+    if (typeof(document) !== 'undefined'){
+        bind( 'offline', document, SELF['_reset_offline'] );
+    }
 
     SELF['ready']();
     return SELF;
 }
 CREATE_PUBNUB['init'] = CREATE_PUBNUB
 CREATE_PUBNUB['secure'] = CREATE_PUBNUB
+CREATE_PUBNUB['crypto_obj'] = crypto_obj()
 PUBNUB = CREATE_PUBNUB({})
 typeof module  !== 'undefined' && (module.exports = CREATE_PUBNUB) ||
 typeof exports !== 'undefined' && (exports.PUBNUB = CREATE_PUBNUB) || (PUBNUB = CREATE_PUBNUB);
