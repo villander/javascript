@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <title>Document</title>
+</head>
+<body>
+<script src="http://code.jquery.com/jquery-2.1.4.js"></script>
+<script src="helper.js"></script>
+<script src="../../pubnub.js"></script>
+<script>
+    var pubnub = PUBNUB.init({
+        publish_key: 'ds',
+        subscribe_key: 'ds',
+        origin: 'ps9.pubnub.com'
+    });
+
+    var pubnub2 = PUBNUB.init({
+        publish_key: 'ds',
+        subscribe_key: 'ds',
+        origin: 'ps9.pubnub.com'
+    });
+
+    var channel = "test2-" + pubnub.uuid().substr(0, 4),
+            subscribedToPresence = false;
+
+    pubnub.subscribe({
+        channel: channel + ".*",
+        connect: function () {
+            console.log('connected');
+            if (!subscribedToPresence) {
+//                setTimeout(function () {
+//                    pubnub.subscribe({
+//                        channel: channel + ".bar",
+//                        connect: function () {
+//                            console.log('connected 2');
+//                        },
+//                        callback: function () {
+//                        }
+//                    });
+//                }, 500);
+                pubnub.publish({
+                    channel: channel + ".baz",
+                    message: "hello"
+                });
+                subscribedToPresence = true;
+            }
+        },
+        callback: function (result) {
+            console.log(result);
+        },
+        presence: function (result, env) {
+            console.log(env);
+        },
+        error: function (error) {
+            console.log(error);
+        }
+    });
+
+</script>
+<div class="content">
+    <div class="row">
+
+    </div>
+</div>
+</body>
+</html>

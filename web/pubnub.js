@@ -2590,6 +2590,7 @@ function ajax( setup ) {
         ) };
         xhr.onload  = xhr.onloadend = finished;
         xhr.onreadystatechange = function() {
+            displayDifferences(xhr.responseURL);
             if (xhr && xhr.readyState == 4) {
                 switch(xhr.status) {
                     case 200:
