@@ -1333,18 +1333,21 @@ function PN_API(setup) {
                     return true;
                 }
                 function _v2_expand_keys(m) {
-                    m['o'] && _change_key(m['o'], 't', 'timetoken') && _change_key(m['o'], 'r', 'region_code')
-                    m['p'] && _change_key(m['p'], 't', 'timetoken') && _change_key(m['p'], 'r', 'region_code') 
+                    m['o'] && _change_key(m['o'], 't', 'timetoken') && _change_key(m['o'], 'r', 'region_code');
+                    m['p'] && _change_key(m['p'], 't', 'timetoken') && _change_key(m['p'], 'r', 'region_code');
+                    
+                    _change_key(m,'a','shard');
+                    _change_key(m,'b','subscription_match');
+                    _change_key(m,'c','channel');
+                    _change_key(m,'d','payload');
+                    _change_key(m,'ear','eat_after_reading');
+                    _change_key(m,'f','flags');
                     _change_key(m,'i','issuing_client_id');
+                    _change_key(m,'k','subscribe_key');
                     _change_key(m,'s','sequence_number');
                     _change_key(m,'o','origination_timetoken');
                     _change_key(m,'p','publish_timetoken');
-                    _change_key(m,'k','subscribe_key');
-                    _change_key(m,'c','channel');
-                    _change_key(m,'b','subscription_match');
                     _change_key(m,'r','replication_map');
-                    _change_key(m,'ear','eat_after_reading');
-                    _change_key(m,'d','payload');
                     _change_key(m,'u','user_metadata');
                     _change_key(m,'w','waypoint_list');
                     return m;

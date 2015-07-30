@@ -1325,35 +1325,55 @@ function PN_API(setup) {
 
                 start_presence_heartbeat();
 
-                function subscribeSuccessHandlerV2(messages) {
+                function _change_key(o, ok, nk) {
+                    if (typeof o[ok] !== 'undefined'){
+                        var t = o[ok];
+                        o[nk] = t;
+                        delete o[ok];
+                    }
+                    return true;
+                }
+                function _v2_expand_keys(m) {
+                    m['o'] && _change_key(m['o'], 't', 'timetoken') && _change_key(m['o'], 'r', 'region_code');
+                    m['p'] && _change_key(m['p'], 't', 'timetoken') && _change_key(m['p'], 'r', 'region_code');
+                    
+                    _change_key(m,'a','shard');
+                    _change_key(m,'b','subscription_match');
+                    _change_key(m,'c','channel');
+                    _change_key(m,'d','payload');
+                    _change_key(m,'ear','eat_after_reading');
+                    _change_key(m,'f','flags');
+                    _change_key(m,'i','issuing_client_id');
+                    _change_key(m,'k','subscribe_key');
+                    _change_key(m,'s','sequence_number');
+                    _change_key(m,'o','origination_timetoken');
+                    _change_key(m,'p','publish_timetoken');
+                    _change_key(m,'r','replication_map');
+                    _change_key(m,'u','user_metadata');
+                    _change_key(m,'w','waypoint_list');
+                    return m;
+                }
+
+                function subscribeSuccessHandlerV2(response) {
 
                     //SUB_RECEIVER = null;
                     // Check for Errors
-                    if (!messages || (
-                        typeof messages == 'object' &&
-                        'error' in messages         &&
-                        messages['error']
+                    if (!response || (
+                        typeof response == 'object' &&
+                        'error' in response         &&
+                        response['error']
                     )) {
-                        errcb(messages['error']);
+                        errcb(response['error']);
                         return timeout( CONNECT, SECOND );
                     }
 
                     // User Idle Callback
-                    idlecb(messages[1]);
+                    idlecb(response['t']['t']);
 
                     // Restore Previous Connection Point if Needed
                     TIMETOKEN = !TIMETOKEN               &&
                                 SUB_RESTORE              &&
-                                db['get'](SUBSCRIBE_KEY) || messages[1];
-
-                    /*
-                    // Connect
-                    each_channel_registry(function(registry){
-                        if (registry.connected) return;
-                        registry.connected = 1;
-                        registry.connect(channel.name);
-                    });
-                    */
+                                db['get'](SUBSCRIBE_KEY) || response['t']['t'];
 
                     // Connect
                     each_channel(function(channel){
@@ -1386,63 +1406,25 @@ function PN_API(setup) {
                     }
 
                     // Update Saved Timetoken
-                    db['set']( SUBSCRIBE_KEY, messages[1] );
+                    db['set']( SUBSCRIBE_KEY, response['t']['t'] );
 
-                    // Route Channel <---> Callback for Message
-                    var next_callback = (function() {
-                        var channels = '';
-                        var channels2 = '';
+                    var messages = response['m'];
 
-                        if (messages.length > 3) {
-                            channels  = messages[3];
-                            channels2 = messages[2];
-                        } else if (messages.length > 2) {
-                            channels = messages[2];
-                        } else {
-                            channels =  map(
-                                generate_channel_list(CHANNELS), function(chan) { return map(
-                                    Array(messages[0].length)
-                                    .join(',').split(','),
-                                    function() { return chan; }
-                                ) }).join(',')
+                    for (var i in messages) {
+                        var message     = messages[i]
+                        ,   channel     = message['c']
+                        ,   sub_channel = message['b'];
+
+                        var chobj = CHANNELS[sub_channel] || CHANNEL_GROUPS[sub_channel] || 
+                                    CHANNELS[channel];
+
+                        if (chobj) {
+                            var callback = chobj['callback'];
+                            callback && 
+                            callback(message['d'], message['b'] || message['c'], 
+                                message['c'], _v2_expand_keys(message));
                         }
-
-                        var list  = channels.split(',');
-                        var list2 = (channels2)?channels2.split(','):[];
-
-                        return function() {
-                            var channel  = list.shift()||SUB_CHANNEL;
-                            var channel2 = list2.shift();
-
-                            var chobj = {};
-
-                            if (channel2) {
-                                if (channel && channel.indexOf('-pnpres') >= 0 
-                                    && channel2.indexOf('-pnpres') < 0) {
-                                    channel2 += '-pnpres';
-                                }
-                                chobj = CHANNEL_GROUPS[channel2] || CHANNELS[channel2] || {'callback' : function(){}};
-                            } else {
-                                chobj = CHANNELS[channel];
-                            }
-
-                            var r = [
-                                chobj
-                                .callback||SUB_CALLBACK,
-                                channel.split(PRESENCE_SUFFIX)[0]
-                            ];
-                            channel2 && r.push(channel2.split(PRESENCE_SUFFIX)[0]);
-                            return r;
-                        };
-                    })();
-
-                    var latency = detect_latency(+messages[1]);
-                    each( messages[0], function(msg) {
-                        var next = next_callback();
-                        var decrypted_msg = decrypt(msg,
-                            (CHANNELS[next[1]])?CHANNELS[next[1]]['cipher_key']:null);
-                        next[0] && next[0]( decrypted_msg, messages, next[2] || next[1], latency, next[1]);
-                    });
+                    }
 
                     timeout( _connect, windowing );
                 }
