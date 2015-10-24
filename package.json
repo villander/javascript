@@ -1,7 +1,7 @@
 {
   "name": "pubnub_browserify",
   "preferGlobal": false,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "PubNub <stephen@pubnub.com>",
   "description": "Publish & Subscribe Real-time Messaging with PubNub",
   "contributors": [
@@ -10,7 +10,7 @@
       "email": "stephen@pubnub.com"
     },
     { 
-      "name":"Frederick Brock"
+      "name":"Frederick Brock",
       "email":"fred@pubnub.com"
     }
   ],
@@ -18,7 +18,7 @@
   "scripts": {
     "test": "grunt test --force"
   },
-  "main": "./browserify_nodejs/pubnub.js",
+  "main": "./browserify_node/pubnub.js",
   "repository": {
     "type": "git",
     "url": "git://github.com/pubnub/javascript.git"
