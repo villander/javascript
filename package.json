@@ -51,7 +51,7 @@
     "node": ">=0.2"
   },
   "files": [
-    "node.js",
+    "browserify_nodejs",
     "CHANGELOG",
     "FUTURE.md",
     "LICENSE",
