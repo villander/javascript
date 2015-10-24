@@ -1,5 +1,5 @@
 {
-  "name": "pubnub",
+  "name": "pubnub_browserify",
   "preferGlobal": false,
   "version": "3.7.15",
   "author": "PubNub <stephen@pubnub.com>",
@@ -14,7 +14,7 @@
   "scripts": {
     "test": "grunt test --force"
   },
-  "main": "./node.js/pubnub.js",
+  "main": "./browserify_nodejs/pubnub.js",
   "repository": {
     "type": "git",
     "url": "git://github.com/pubnub/javascript.git"
@@ -28,7 +28,8 @@
     "bosh",
     "xmpp",
     "real-time",
-    "messaging"
+    "messaging",
+    "react"
   ],
   "dependencies": {
     "agentkeepalive": "~0.2"

@@ -2122,7 +2122,8 @@ var NOW                 = 1
 ,   keepAliveAgent
 ,   keepAliveAgentSSL;
 
-if (keepAliveIsEmbedded()) {
+
+/*if (keepAliveIsEmbedded()) {
     keepAliveAgent = new http.Agent(keepAliveConfig);
     keepAliveAgentSSL = new https.Agent(keepAliveConfig);
 } else {
@@ -2133,7 +2134,7 @@ if (keepAliveIsEmbedded()) {
         keepAliveAgent = new agent(keepAliveConfig);
         keepAliveAgentSSL = new agentSSL(keepAliveConfig);
     })();
-}
+}*/
 
 function get_hmac_SHA256(data, key) {
     return crypto.createHmac('sha256',
@@ -2228,7 +2229,7 @@ function xdr( setup ) {
         options.agent = keepAliveAgent;
     }
 
-    require('http').globalAgent.maxSockets = Infinity;
+    //require('http').globalAgent.maxSockets = Infinity;
 
     try {
         request = (ssl ? https : http)['request'](options, function(response) {
