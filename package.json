@@ -1,13 +1,17 @@
 {
   "name": "pubnub_browserify",
   "preferGlobal": false,
-  "version": "3.7.15",
+  "version": "1.0.1",
   "author": "PubNub <stephen@pubnub.com>",
   "description": "Publish & Subscribe Real-time Messaging with PubNub",
   "contributors": [
     {
       "name": "Stephen Blum",
       "email": "stephen@pubnub.com"
+    },
+    { 
+      "name":"Frederick Brock"
+      "email":"fred@pubnub.com"
     }
   ],
   "bin": {},
@@ -51,7 +55,7 @@
     "node": ">=0.2"
   },
   "files": [
-    "browserify_nodejs",
+    "browserify_node",
     "CHANGELOG",
     "FUTURE.md",
     "LICENSE",
