@@ -35,19 +35,33 @@ THE SOFTWARE.
 var NOW                 = 1
 ,   http                = require('http')
 ,   https               = require('https')
-,   keepAliveAgent      = new (keepAliveIsEmbedded() ? http.Agent : require('agentkeepalive'))({
-                            keepAlive: true,
-                            keepAliveMsecs: 300000,
-                            maxSockets: 5
-                          })
 ,   XHRTME              = 310000
 ,   DEF_TIMEOUT         = 10000
 ,   SECOND              = 1000
 ,   PNSDK               = 'PubNub-JS-' + PLATFORM + '/' +  VERSION
 ,   crypto              = require('crypto')
 ,   proxy               = null
-,   XORIGN              = 1;
+,   XORIGN              = 1
+,   keepAliveConfig     = {
+    keepAlive: true,
+    keepAliveMsecs: 300000,
+    maxSockets: 5
+}
+,   keepAliveAgent
+,   keepAliveAgentSSL;
 
+if (keepAliveIsEmbedded()) {
+    keepAliveAgent = new http.Agent(keepAliveConfig);
+    keepAliveAgentSSL = new https.Agent(keepAliveConfig);
+} else {
+    (function () {
+        var agent = require('agentkeepalive'),
+            agentSSL = agent.HttpsAgent;
+
+        keepAliveAgent = new agent(keepAliveConfig);
+        keepAliveAgentSSL = new agentSSL(keepAliveConfig);
+    })();
+}
 
 function get_hmac_SHA256(data, key) {
     return crypto.createHmac('sha256',
@@ -74,9 +88,9 @@ function error(message) { console['error'](message) }
 function xdr( setup ) {
     var request
     ,   response
+    ,   debug    = setup['debug']
     ,   success  = setup.success || function(){}
     ,   fail     = setup.fail    || function(){}
-    ,   origin   = setup.origin || 'pubsub.pubnub.com'
     ,   ssl      = setup.ssl
     ,   failed   = 0
     ,   complete = 0
@@ -91,7 +105,7 @@ function xdr( setup ) {
 
             clearTimeout(timer);
             try       { response = JSON['parse'](body); }
-            catch (r) { return done(1); }
+            catch (r) { return done(1, {"error" : true, "message" : "error in response parsing"}); }
             success(response);
         }
     ,   done    = function(failed, response) {
@@ -109,39 +123,46 @@ function xdr( setup ) {
             }
             failed && fail(response);
         }
-        ,   timer  = timeout( function(){done(1);} , xhrtme );
+        ,   timer  = timeout( function(){done(1, {"error" : true, "message" : "timeout"})} , xhrtme );
 
     data['pnsdk'] = PNSDK;
 
     var options = {};
-    var headers = {};
     var payload = '';
 
     if (mode == 'POST')
         payload = decodeURIComponent(setup.url.pop());
 
     var url = build_url( setup.url, data );
-    if (!ssl) ssl = (url.split('://')[0] == 'https')?true:false;
+    debug && debug(url);
+
+    if (!ssl) ssl = (url.split('://')[0] == 'https');
 
     url = '/' + url.split('/').slice(3).join('/');
 
-    var origin       = setup.url[0].split("//")[1]
+    var origin       = setup.url[0].split("//")[1];
 
     options.hostname = proxy ? proxy.hostname : setup.url[0].split("//")[1];
     options.port     = proxy ? proxy.port : ssl ? 443 : 80;
-    options.path     = proxy ? "http://" + origin + url:url;
-    options.headers  = proxy ? { 'Host': origin }:null;
+    options.path     = proxy ? "http://" + origin + url : url;
+    options.headers  = proxy ? { 'Host': origin } : null;
     options.method   = mode;
     options.keepAlive= !!keepAliveAgent;
-    //options.agent    = keepAliveAgent;    
     options.body     = payload;
 
+    if (options.keepAlive && ssl) {
+        options.agent = keepAliveAgentSSL;
+    } else if (options.keepAlive) {
+        options.agent = keepAliveAgent;
+    }
+
     require('http').globalAgent.maxSockets = Infinity;
+
     try {
         request = (ssl ? https : http)['request'](options, function(response) {
             response.setEncoding('utf8');
-            response.on( 'error', function(){done(1, body || { "error" : "Network Connection Error"})});
-            response.on( 'abort', function(){done(1, body || { "error" : "Network Connection Error"})});
+            response.on( 'error', function(){done(1, body || { "error" : true, "message" : "Network Connection Error"})});
+            response.on( 'abort', function(){done(1, body || { "error" : true, "message" : "Network Connection Error"})});
             response.on( 'data', function (chunk) {
                 if (chunk) body += chunk;
             } );
@@ -149,24 +170,22 @@ function xdr( setup ) {
                 var statusCode = response.statusCode;
 
                 switch(statusCode) {
-                    case 401:
-                    case 402:
-                    case 403:
+                    case 200:
+                        break;
+                    default:
                         try {
                             response = JSON['parse'](body);
                             done(1,response);
                         }
-                        catch (r) { return done(1, body); }
+                        catch (r) { return done(1, {status : statusCode, payload : null, message : body}); }
                         return;
-                    default:
-                        break;
                 }
                 finished();
             });
         });
         request.timeout = xhrtme;
         request.on( 'error', function() {
-            done( 1, {"error":"Network Connection Error"} );
+            done( 1, {"error": true, "message" : "Network Connection Error"} );
         } );
 
         if (mode == 'POST') request.write(payload);
@@ -197,21 +216,74 @@ var db = (function(){
 
 function crypto_obj() {
     var iv = "0123456789012345";
-    function get_padded_key(key) {
-        return crypto.createHash('sha256').update(key).digest("hex").slice(0,32);
+
+    var allowedKeyEncodings = ['hex', 'utf8', 'base64', 'binary'];
+    var allowedKeyLengths = [128, 256];
+    var allowedModes = ['ecb', 'cbc'];
+
+    var defaultOptions = {
+        encryptKey: true,
+        keyEncoding: 'utf8',
+        keyLength: 256,
+        mode: 'cbc'
+    };
+
+    function parse_options(options) {
+
+        // Defaults
+        options = options || {};
+        if (!options.hasOwnProperty('encryptKey')) options.encryptKey = defaultOptions.encryptKey;
+        if (!options.hasOwnProperty('keyEncoding')) options.keyEncoding = defaultOptions.keyEncoding;
+        if (!options.hasOwnProperty('keyLength')) options.keyLength = defaultOptions.keyLength;
+        if (!options.hasOwnProperty('mode')) options.mode = defaultOptions.mode;
+
+        // Validation
+        if (allowedKeyEncodings.indexOf(options.keyEncoding.toLowerCase()) == -1) options.keyEncoding = defaultOptions.keyEncoding;
+        if (allowedKeyLengths.indexOf(parseInt(options.keyLength, 10)) == -1) options.keyLength = defaultOptions.keyLength;
+        if (allowedModes.indexOf(options.mode.toLowerCase()) == -1) options.mode = defaultOptions.mode;
+
+        return options;
+
+    }
+
+    function decode_key(key, options) {
+        if (options.keyEncoding == 'base64' || options.keyEncoding == 'hex') {
+            return new Buffer(key, options.keyEncoding);
+        } else {
+            return key;
+        }
+    }
+
+    function get_padded_key(key, options) {
+        key = decode_key(key, options);
+        if (options.encryptKey) {
+            return crypto.createHash('sha256').update(key).digest("hex").slice(0,32);
+        } else {
+            return key;
+        }
+    }
+
+    function get_algorythm(options) {
+        return 'aes-' + options.keyLength + '-' + options.mode;
+    }
+
+    function get_iv(options) {
+        return (options.mode == 'cbc') ? iv : '';
     }
 
     return {
-        'encrypt' : function(input, key) {
+        'encrypt' : function(input, key, options) {
             if (!key) return input;
+            options = parse_options(options);
             var plain_text = JSON['stringify'](input);
-            var cipher = crypto.createCipheriv('aes-256-cbc', get_padded_key(key), iv);
+            var cipher = crypto.createCipheriv(get_algorythm(options), get_padded_key(key, options), get_iv(options));
             var base_64_encrypted = cipher.update(plain_text, 'utf8', 'base64') + cipher.final('base64');
             return base_64_encrypted || input;
         },
-        'decrypt' : function(input, key) {
+        'decrypt' : function(input, key, options) {
             if (!key) return input;
-            var decipher = crypto.createDecipheriv('aes-256-cbc', get_padded_key(key), iv);
+            options = parse_options(options);
+            var decipher = crypto.createDecipheriv(get_algorythm(options), get_padded_key(key, options), get_iv(options));
             try {
                 var decrypted = decipher.update(input, 'base64', 'utf8') + decipher.final('utf8');
             } catch (e) {
@@ -223,7 +295,7 @@ function crypto_obj() {
 }
 
 function keepAliveIsEmbedded() {
-  return 'EventEmitter' in http.Agent.super_;
+    return 'EventEmitter' in http.Agent.super_;
 }
 
 
@@ -235,28 +307,39 @@ var CREATE_PUBNUB = function(setup) {
     setup['hmac_SHA256'] = get_hmac_SHA256;
     setup['crypto_obj'] = crypto_obj();
     setup['params'] = {'pnsdk' : PNSDK};
+    setup['shutdown'] = function() {
+        keepAliveAgentSSL && keepAliveAgentSSL.destroy && keepAliveAgentSSL.destroy();
+        keepAliveAgent && keepAliveAgent.destroy && keepAliveAgent.destroy();
+    }
 
     if (setup['keepAlive'] === false) {
       keepAliveAgent = undefined;
     }
 
-    SELF = function(setup) {
+    var SELF = function(setup) {
         return CREATE_PUBNUB(setup);
-    }
+    };
+
     var PN = PN_API(setup);
+
     for (var prop in PN) {
         if (PN.hasOwnProperty(prop)) {
             SELF[prop] = PN[prop];
         }
     }
+
     SELF.init = SELF;
     SELF.secure = SELF;
+    SELF.crypto_obj = crypto_obj();
     SELF.ready();
-    return SELF;
-}
-CREATE_PUBNUB.init = CREATE_PUBNUB;
 
-CREATE_PUBNUB.unique = unique
+
+    return SELF;
+};
+
+CREATE_PUBNUB.init = CREATE_PUBNUB;
+CREATE_PUBNUB.unique = unique;
 CREATE_PUBNUB.secure = CREATE_PUBNUB;
-module.exports = CREATE_PUBNUB
+CREATE_PUBNUB.crypto_obj = crypto_obj();
+module.exports = CREATE_PUBNUB;
 module.exports.PNmessage = PNmessage;

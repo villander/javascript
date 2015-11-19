@@ -1,11 +1,3 @@
-/* =-====================================================================-= */
-/* =-====================================================================-= */
-/* =-=========================     UTIL     =============================-= */
-/* =-====================================================================-= */
-/* =-====================================================================-= */
-
-window['PUBNUB'] || (function() {
-
 /**
  * UTIL LOCALS
  */
@@ -325,24 +317,22 @@ function ajax( setup ) {
               new XDomainRequest()  ||
               new XMLHttpRequest();
 
-        xhr.onerror = xhr.onabort   = function(){ done(
-            1, xhr.responseText || { "error" : "Network Connection Error"}
+        xhr.onerror = xhr.onabort   = function(e){ done(
+            1, e || (xhr && xhr.responseText) || { "error" : "Network Connection Error"}
         ) };
         xhr.onload  = xhr.onloadend = finished;
         xhr.onreadystatechange = function() {
             if (xhr && xhr.readyState == 4) {
                 switch(xhr.status) {
-                    case 401:
-                    case 402:
-                    case 403:
+                    case 200:
+                        break;
+                    default:
                         try {
                             response = JSON['parse'](xhr.responseText);
                             done(1,response);
                         }
-                        catch (r) { return done(1, xhr.responseText); }
-                        break;
-                    default:
-                        break;
+                        catch (r) { return done(1, {status : xhr.status, payload : null, message : xhr.responseText}); }
+                        return;
                 }
             }
         }
@@ -368,6 +358,13 @@ function _is_online() {
     if (!('onLine' in navigator)) return 1;
     try       { return navigator['onLine'] }
     catch (e) { return true }
+}
+
+
+function sendBeacon(url) {
+    if (!('sendBeacon' in navigator)) return false;
+
+    return navigator['sendBeacon'](url);
 }
 
 /* =-====================================================================-= */
@@ -396,6 +393,7 @@ var PDIV          = $('pubnub') || 0
     setup['jsonp_cb']   = jsonp_cb;
     setup['hmac_SHA256']= get_hmac_SHA256;
     setup['crypto_obj'] = crypto_obj();
+    setup['sendBeacon'] = sendBeacon;
     setup['params']     = { 'pnsdk' : PNSDK }
 
     var SELF = function(setup) {
@@ -419,6 +417,7 @@ var PDIV          = $('pubnub') || 0
     SELF['events']      = events;
     SELF['init']        = SELF;
     SELF['secure']      = SELF;
+    SELF['crypto_obj']  = crypto_obj(); // export to instance
 
 
     // Add Leave Functions
@@ -438,6 +437,7 @@ var PDIV          = $('pubnub') || 0
 };
 CREATE_PUBNUB['init']   = CREATE_PUBNUB;
 CREATE_PUBNUB['secure'] = CREATE_PUBNUB;
+CREATE_PUBNUB['crypto_obj'] = crypto_obj(); // export to constructor
 
 // Bind for PUBNUB Readiness to Subscribe
 if (document.readyState === 'complete') {

@@ -1,7 +1,7 @@
 {
   "name": "pubnub",
   "preferGlobal": false,
-  "version": "3.7.6", 
+  "version": "3.7.16",
   "author": "PubNub <stephen@pubnub.com>",
   "description": "Publish & Subscribe Real-time Messaging with PubNub",
   "contributors": [
@@ -11,8 +11,11 @@
     }
   ],
   "bin": {},
-  "scripts": { },
-  "main": "./pubnub.js",
+  "scripts": {
+    "test": "grunt test --force"
+  },
+  "main": "./node.js/pubnub.js",
+  "browser": "./modern/pubnub.js",
   "repository": {
     "type": "git",
     "url": "git://github.com/pubnub/javascript.git"
@@ -28,14 +31,31 @@
     "real-time",
     "messaging"
   ],
-  "dependencies" : {
+  "dependencies": {
     "agentkeepalive": "~0.2"
   },
   "noAnalyze": false,
-  "devDependencies": {},
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-clean": "^0.6.0",
+    "grunt-contrib-nodeunit": "^0.4.1",
+    "grunt-mocha-test": "^0.12.7",
+    "mocha": "^2.1.0",
+    "nock": "^1.1.0",
+    "nodeunit": "^0.9.0",
+    "underscore": "^1.7.0"
+  },
   "bundleDependencies": [],
   "license": "MIT",
   "engine": {
     "node": ">=0.2"
-  }
+  },
+  "files": [
+    "node.js",
+    "web/pubnub.js",
+    "CHANGELOG",
+    "FUTURE.md",
+    "LICENSE",
+    "README.md"
+  ]
 }

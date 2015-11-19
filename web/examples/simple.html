@@ -4,15 +4,16 @@
 
 // INIT PubNub
 
+//console.log(map);
+
 var pubnub = PUBNUB.init({
-    publish_key     : 'ds',
-    subscribe_key   : 'ds'
+    'publish_key' : 'demo',
+    'subscribe_key' : 'demo' 
 });
 
 
 pubnub.subscribe({
-    'channel' :  'abcd',
-    'v2'      : true,
+    'channel' :  "a",
     'callback'       : function(r) {
         console.log(JSON.stringify(r));
     },
@@ -22,6 +23,7 @@ pubnub.subscribe({
     }, 
     */   
     'error'         : function(r) {
+        console.log('ERROR');
         console.log(JSON.stringify(r));  
     },    
     'disconnect'       : function(r) {

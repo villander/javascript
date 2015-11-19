@@ -30,6 +30,7 @@ function _pubnub_init(args, config, pn){
     if (config) {
         args.ssl = config.ssl;
         args.jsonp = config.jsonp;
+        //args.cipher_key = config.cipher_key;
     }
     if (pn) 
         return pn.init(args);
@@ -41,6 +42,7 @@ function _pubnub(args, config, pn) {
     if (config) {
         args.ssl = config.ssl;
         args.jsonp = config.jsonp;
+        //args.cipher_key = config.cipher_key;
     }
     if (pn) 
         return pn(args);
@@ -65,6 +67,9 @@ function pubnub_test(test_name, test_func, config) {
         if (config.presence) {
             test_name += ' [PRESENCE] ';
         }
+        if (config.cipher_key) {
+            test_name += ' [ENCRYPTION]'
+        }
     }
     test(test_name, function(){
         test_func(config);
@@ -73,14 +78,16 @@ function pubnub_test(test_name, test_func, config) {
 
 function pubnub_test_all(test_name, test_func) {
     pubnub_test(test_name, test_func);
-    pubnub_test(test_name, test_func, {jsonp : true});
+    //pubnub_test(test_name, test_func, {jsonp : true});
     pubnub_test(test_name, test_func, {ssl : true});
+    //pubnub_test(test_name, test_func, {cipher_key : 'enigma'});
     pubnub_test(test_name, test_func, {
         presence : function(r){
             if (!r.action) { ok(false, "presence called"); start()};
         }
     });
-    pubnub_test(test_name, test_func, {jsonp : true, ssl : true});
+    //pubnub_test(test_name, test_func, {jsonp : true, ssl : true, cipher_key : 'enigma'});
+    //pubnub_test(test_name, test_func, {jsonp : true, ssl : true});
 }
 
 
@@ -353,6 +360,33 @@ pubnub_test_all("instantiation test 7", function(config) {
     }, config);
 });
 
+pubnub_test_all("instantiation test (heartbeat)", function(config) {
+    var hb  = 20;
+    var hbi = 5;
+    var pubnub1 = _pubnub_init({
+        publish_key: test_publish_key,
+        subscribe_key: test_subscribe_key,
+        heartbeat : hb,
+        heartbeat_interval : hbi
+    }, config);
+
+    var pubnub2 = _pubnub_init({
+        publish_key: test_publish_key,
+        subscribe_key: test_subscribe_key,
+        heartbeat : hb
+    }, config);
+
+
+    expect(4);
+    stop(1);
+    equal(hb,pubnub1.get_heartbeat());
+    equal(hbi, pubnub1.get_heartbeat_interval());
+
+    equal(hb, pubnub2.get_heartbeat());
+    equal(hb/2 -1, pubnub2.get_heartbeat_interval());
+    start();
+});
+
 pubnub_test_all("publish() should publish strings without error", function(config) {
     var pubnub = _pubnub_init({
         publish_key: test_publish_key,
@@ -378,6 +412,306 @@ pubnub_test_all("publish() should publish strings without error", function(confi
         }
     }, config);
 });
+
+pubnub_test_all("subscribe() should receive message when subscribed to wildcard, if message is published on a channel which matches wildcard, for ex. reveive on a.foo when subscribed to a.*",function(config){
+    var random  = get_random();
+    var ch      = 'channel-' + random;
+    var chw     = ch + '.*';
+    var chwc    = ch + ".a";
+
+    var pubnub = _pubnub_init({
+        publish_key: test_publish_key,
+        subscribe_key: test_subscribe_key
+    }, config);
+
+    expect(2);
+    stop(1);
+
+
+
+    _pubnub_subscribe(pubnub, {
+        channel: chw,
+        connect: function () {
+            setTimeout(function(){
+                pubnub.publish({
+                    'channel' : chwc,
+                    message : 'message' + chwc,
+                    callback : function(r) {
+                        ok(true, 'message published');   
+                    },
+                    error : function(r) {
+                        ok(false, 'error occurred in publish');
+                    }
+                })
+            }, 5000);
+        },
+        callback: function (response) {
+            deepEqual(response, 'message' + chwc, "message received 2");
+            pubnub.unsubscribe({channel: chwc});
+            start();
+        },
+        error: function () {
+            ok(false);
+            pubnub.unsubscribe({channel: chwc});
+            
+        }
+    });
+           
+})
+
+pubnub_test_all("subscribe() should receive message when subscribed to wildcard, if message is published on a channel which matches wildcard when ENCRYPTION is enabled, for ex. reveive on a.foo when subscribed to a.*",function(config){
+    var random  = get_random();
+    var ch      = 'channel-' + random;
+    var chw     = ch + '.*';
+    var chwc    = ch + ".a";
+
+    var pubnub = _pubnub_init({
+        publish_key: test_publish_key,
+        subscribe_key: test_subscribe_key,
+        cipher_key: 'enigma'
+    }, config);
+
+    expect(2);
+    stop(2);
+    _pubnub_subscribe(pubnub, {
+        channel: chw,
+        connect: function () {
+            setTimeout(function(){
+                pubnub.publish({
+                    'channel' : chwc,
+                    message : 'message' + chwc,
+                    callback : function(r) {
+                        ok(true, 'message published');
+                        start();  
+                    },
+                    error : function(r) {
+                        ok(false, 'error occurred in publish');
+                    }
+                })
+            }, 5000);
+        },
+        callback: function (response) {
+            deepEqual(response, 'message' + chwc, "message received 2");
+            pubnub.unsubscribe({channel: chwc});
+            start();
+        },
+        error: function () {
+            ok(false);
+            pubnub.unsubscribe({channel: chwc});
+            
+        }
+    });
+           
+})
+
+pubnub_test_all("subscribe() should receive emoji (unicode) message when subscribed to wildcard, if message is published on a channel which matches wildcard, for ex. reveive on a.foo when subscribed to a.*",function(config){
+    var random  = get_random();
+    var ch      = 'channel-' + random;
+    var chw     = ch + '.*';
+    var chwc    = ch + ".a";
+
+    var pubnub = _pubnub_init({
+        publish_key: test_publish_key,
+        subscribe_key: test_subscribe_key
+    }, config);
+
+    expect(2);
+    stop(2);
+
+    var message = '😀';
+
+    _pubnub_subscribe(pubnub, {
+        channel: chw,
+        connect: function () {
+            setTimeout(function(){
+                pubnub.publish({
+                    'channel' : chwc,
+                    message : message,
+                    callback : function(r) {
+                        ok(true, 'message published');   
+                        start();
+                    },
+                    error : function(r) {
+                        ok(false, 'error occurred in publish');
+                    }
+                })
+            }, 5000);
+        },
+        callback: function (response) {
+            deepEqual(response, message, "message received 2");
+            //pubnub.unsubscribe({channel: chwc});
+            start();
+        },
+        error: function () {
+            ok(false);
+            pubnub.unsubscribe({channel: chwc});
+            
+        }
+    });
+           
+})
+
+pubnub_test_all("subscribe() should receive emoji (unicode) message when subscribed to wildcard, if message is published on a channel which matches wildcard when ENCRYPTION is enabled, for ex. reveive on a.foo when subscribed to a.*",function(config){
+    var random  = get_random();
+    var ch      = 'channel-' + random;
+    var chw     = ch + '.*';
+    var chwc    = ch + ".a";
+
+    var pubnub = _pubnub_init({
+        publish_key: test_publish_key,
+        subscribe_key: test_subscribe_key,
+        cipher_key: 'enigma'
+    }, config);
+
+    var message = '😀';
+    expect(2);
+    stop(2);
+    _pubnub_subscribe(pubnub, {
+        channel: chw,
+        connect: function () {
+            setTimeout(function(){
+                pubnub.publish({
+                    'channel' : chwc,
+                    message : message,
+                    callback : function(r) {
+                        ok(true, 'message published');
+                        start();
+                    },
+                    error : function(r) {
+                        ok(false, 'error occurred in publish');
+                    }
+                })
+            }, 5000);
+        },
+        callback: function (response) {
+            deepEqual(response, message, "message received 2");
+            //pubnub.unsubscribe({channel: chwc});
+            start();
+        },
+        error: function () {
+            ok(false);
+            pubnub.unsubscribe({channel: chwc});
+            
+        }
+    });
+           
+})
+
+pubnub_test_all("subscribe() should be able to handle wildcard, channel group and channel together",function(config){
+    var random  = get_random();
+    var ch      = 'channel-' + random;
+    var chg     = 'channel-group-' + random;
+    var chgc    = 'channel-group-channel' + random
+    var chw     = ch + '.*';
+    var chwc    = ch + ".a";
+
+    var pubnub = _pubnub_init({
+        publish_key: test_publish_key,
+        subscribe_key: test_subscribe_key
+    }, config);
+
+    expect(6);
+    stop(4);
+
+    pubnub.channel_group_add_channel({
+        'channel_group' : chg,
+        'channels'      : chgc,
+        'callback'      : function(r) {
+            pubnub.channel_group_list_channels({
+                'channel_group' : chg,
+                'callback' : function(r) {
+                     _pubnub_subscribe(pubnub, {
+                        channel: ch,
+                        connect: function () {
+                            _pubnub_subscribe(pubnub, {
+                                channel: chw,
+                                connect: function () {
+                                    _pubnub_subscribe(pubnub, {
+                                        channel_group: chg,
+                                        connect: function () {
+                                            setTimeout(function(){
+                                                pubnub.publish({
+                                                    'channel' : ch,
+                                                    message : 'message' + ch,
+                                                    callback : function(r) {
+                                                        ok(true, 'message published');
+                                                        pubnub.publish({
+                                                            'channel' : chwc,
+                                                            message : 'message' + chwc,
+                                                            callback : function(r) {
+                                                                ok(true, 'message published');   
+                                                                pubnub.publish({
+                                                                    'channel' : chgc,
+                                                                    message : 'message' + chgc,
+                                                                    callback : function(r) {
+                                                                        ok(true, 'message published');
+                                                                        start();
+                                                                    },
+                                                                    error : function(r) {
+                                                                        ok(false, 'error occurred in publish');
+                                                                    }
+
+                                                                })
+                                                            },
+                                                            error : function(r) {
+                                                                ok(false, 'error occurred in publish');
+                                                            }
+                                                        })
+                                                    },
+                                                    error : function(r) {
+                                                        ok(false, 'error occurred in publish');
+                                                    }
+
+                                                })
+                                            }, 5000);
+                                        },
+                                        callback: function (response) {
+                                            deepEqual(response, 'message' + chgc, "message received 1");
+                                            //pubnub.unsubscribe({channel: chgc});
+                                            start();
+                                        },
+                                        error: function () {
+                                            ok(false);
+                                            pubnub.unsubscribe({channel: chgc});
+                                            start();
+                                        }
+                                    });
+                                },
+                                callback: function (response) {
+                                    deepEqual(response, 'message' + chwc, "message received 2");
+                                    //pubnub.unsubscribe({channel: chwc});
+                                    start();
+                                },
+                                error: function () {
+                                    ok(false);
+                                    pubnub.unsubscribe({channel: chwc});
+                                    
+                                }
+                            });
+                        },
+                        callback: function (response) {
+                            deepEqual(response, 'message' + ch, "message received 3");
+                            //pubnub.unsubscribe({channel: ch});
+                            start();
+                        },
+                        error: function () {
+                            ok(false);
+                            pubnub.unsubscribe({channel: ch});
+                        }
+                    })
+                },
+                'error' : function(r) {
+                    ok(false, "error occurred");
+                }
+            })      
+        },
+        'error'         : function(r) {
+            ok(false, "error occurred in adding channel to group");
+        }
+
+    });
+           
+})
 
 pubnub_test_all("publish() should publish strings when using channel groups without error", function(config) {
     var pubnub = _pubnub_init({
@@ -1944,7 +2278,8 @@ test('#state() should be able to set state for uuid', function(){
             start();
         }
     })
-})
+});
+
 /*
 asyncTest('#state() should be able to delete state for uuid', function(){
     expect(4);
