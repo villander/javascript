@@ -1558,8 +1558,10 @@ function PN_API(setup) {
 
                         if (chobj) {
                             var callback = chobj['callback'];
+                            var decrypted_message = decrypt(message['d'],
+                            (CHANNELS[message['b'] || message['c']])?CHANNELS[message['b'] || message['c']]['cipher_key']:null)
                             callback && 
-                            callback(message['d'], message['b'] || message['c'], 
+                            callback(decrypted_message, message['b'] || message['c'], 
                                 message['c'], _v2_expand_keys(message));
                         }
                     }
