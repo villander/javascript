@@ -38,18 +38,21 @@ function subscribe_v2(channel) {
         },
         connect : function(c) {
             console.log('CONNECT : ' + JSON.stringify(c));
-            function publish(channel, msg) {
+            function publish(channel, msg, meta) {
                 pubnub1.publish({
                     channel  : channel,
                     message  : msg,
                     callback : log,
-                    error    : retry
+                    error    : log,
+                    meta : meta
                 });
                 }
-                function log(e) { console.log(e) }
+                function log(e) { console.log(JSON.stringify(e)) }
                 function retry() { console.log('retry?')
             }
-            publish('abcd','hi');
+            setTimeout(function(){
+                publish('abcd','hi', {'name' : 'dev'});
+            },5000);
         },
         disconnect : function(c) {
             console.log('DISCONNECT : ' + JSON.stringify(c));
