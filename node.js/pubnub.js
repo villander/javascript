@@ -1525,13 +1525,20 @@ function PN_API(setup) {
                         var chobj = CHANNELS[sub_channel] || CHANNEL_GROUPS[sub_channel] || 
                                     CHANNELS[channel];
 
+                        if (channel.indexOf('-pnpres') >= 0) {
+                            chobj = CHANNELS[channel];
+
+                            channel = channel.split('-pnpres')[0];
+                        }
+
+
                         if (chobj) {
                             var callback = chobj['callback'];
                             var decrypted_message = decrypt(message['d'],
                             (CHANNELS[message['b'] || message['c']])?CHANNELS[message['b'] || message['c']]['cipher_key']:null)
                             callback && 
                             callback(decrypted_message, message['b'] || message['c'], 
-                                message['c'], _v2_expand_keys(message));
+                                channel, _v2_expand_keys(message));
                         }
                     }
 
@@ -2288,6 +2295,7 @@ function get_hmac_SHA256(data, key) {
                     new Buffer(key, 'utf8')).update(data).digest('base64');
 }
 
+var debug_method;
 
 /**
  * ERROR
@@ -2324,6 +2332,13 @@ function xdr( setup ) {
                 loaded = 1;
 
             clearTimeout(timer);
+
+            if (debug_method) {
+                debug_method(body)
+            } else if (debug) {
+                debug(body);
+            }
+
             try       { response = JSON['parse'](body); }
             catch (r) { return done(1, {"error" : true, "message" : "error in response parsing"}); }
             success(response);
@@ -2354,7 +2369,11 @@ function xdr( setup ) {
         payload = decodeURIComponent(setup.url.pop());
 
     var url = build_url( setup.url, data );
-    debug && debug(url);
+    if (debug_method) {
+        debug_method(url)
+    } else if (debug) {
+        debug(url);
+    }
 
     if (!ssl) ssl = (url.split('://')[0] == 'https');
 
@@ -2371,9 +2390,9 @@ function xdr( setup ) {
     options.body     = payload;
 
     if (options.keepAlive && ssl) {
-        options.agent = keepAliveAgentSSL;
+        //options.agent = keepAliveAgentSSL;
     } else if (options.keepAlive) {
-        options.agent = keepAliveAgent;
+        //options.agent = keepAliveAgent;
     }
 
     require('http').globalAgent.maxSockets = Infinity;
@@ -2521,6 +2540,7 @@ function keepAliveIsEmbedded() {
 
 var CREATE_PUBNUB = function(setup) {
     proxy = setup['proxy'];
+    debug_method = setup['debug_method']
     setup['xdr'] = xdr;
     setup['db'] = db;
     setup['error'] = setup['error'] || error;

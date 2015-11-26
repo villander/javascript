@@ -232,25 +232,26 @@ describe('Pubnub', function () {
                             v2 : true,
                             channel: chwc,
                             connect: function () {
-                                pubnub2.publish({
-                                    'channel' : chwc,
-                                    message : 'message' + chwc,
-                                    callback : function(r) {
-                                        assert.ok(true, 'message published');
-                                    },
-                                    error : function(r) {
-                                        assert.ok(false, 'error occurred in publish');
-                                    }
-                                });
-
+                                setTimeout(function(){
+                                    pubnub2.publish({
+                                        'channel' : chwc,
+                                        message : 'message' + chwc,
+                                        callback : function(r) {
+                                            assert.ok(true, 'message published');
+                                        },
+                                        error : function(r) {
+                                            assert.ok(false, 'error occurred in publish');
+                                        }
+                                    });
+                                }, 5000);
                             },
                             callback: function (response) {
                                 assert.deepEqual(response, 'message' + chwc);
                                 pubnub2.unsubscribe({channel: chwc});
                                 d();
                             },
-                            error: function () {
-                                assert.ok(false);
+                            error: function (r) {
+                                assert.ok(false, JSON.stringify(r));
                                 pubnub2.unsubscribe({channel: ch});
                                 done();
                             }
@@ -458,21 +459,27 @@ describe('Pubnub', function () {
                 v2 : true,
                 channel: ch,
                 connect: function () {
-                    pubnub.publish({
-                        channel: ch,
-                        message: message_string,
-                        callback: function (response) {
-                            assert.deepEqual(response[0], 1);
-                        }
-                    });
+                    setTimeout(function(){
+                        pubnub.publish({
+                            channel: ch,
+                            message: message_string,
+                            callback: function (response) {
+                                assert.deepEqual(response[0], 1);
+                            },
+                            error : function(r) {
+                                assert.ok(false, JSON.stringify(r));
+                                done();
+                            }
+                        });
+                    }, 3000);
                 },
                 callback: function (response) {
                     assert.deepEqual(response, message_string);
                     pubnub_enc.unsubscribe({channel: ch});
                     done();
                 },
-                error: function () {
-                    assert.ok(false);
+                error: function (r) {
+                    assert.ok(false, JSON.stringify(r));
                     pubnub_enc.unsubscribe({channel: ch});
                     done();
                 }
@@ -1765,7 +1772,7 @@ describe('Pubnub', function () {
                                 done(new Error("Error occurred in where_now"));
                             }
                         })
-                    }, 3000);
+                    }, 6000);
                 },
                 callback: function (response) {
                 },
@@ -1801,7 +1808,7 @@ describe('Pubnub', function () {
                                     done(new Error("Error occurred in where_now " + JSON.stringify(error)));
                                 }
                             })
-                        }, 3000);
+                        }, 6000);
                         where_now_set = true;
                     }
                 },

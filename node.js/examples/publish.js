@@ -1,33 +1,20 @@
-/* ---------------------------------------------------------------------------
 
-    Init PubNub and Get your PubNub API Keys:
-    http://www.pubnub.com/account#api-keys
-
---------------------------------------------------------------------------- */
-
-var pubnub = require("./../pubnub.js").init({
-    publish_key   : "demo",
-    ssl : true,
-    subscribe_key : "demo"
+var pubnub = require("../pubnub.js").init({
+    publish_key   : "ds",
+    subscribe_key : "ds"
 });
-
-
-/* ---------------------------------------------------------------------------
-Listen for Messages
---------------------------------------------------------------------------- */
-
+var i = 0;
 function publish(channel, msg) {
-pubnub.publish({
-    channel  : channel,
-    message  : msg,
-    callback : log,
-    error    : retry
-});
+	pubnub.publish({
+    	channel  : channel,
+    	message  : msg,
+    	callback : log ,
+    	error    : log
+	});
 }
-function log(e) { console.log(e) }
-function retry() { console.log('retry?') }
 
+function log(e) { console.log(JSON.stringify(e)); }
 
-for (var i = 1; i < 2; i++) {
-    publish('dsm-test',i);
-}
+setInterval(function(){
+	publish("xyz", ++i);
+}, 5000);

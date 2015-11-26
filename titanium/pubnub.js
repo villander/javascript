@@ -1526,13 +1526,20 @@ function PN_API(setup) {
                         var chobj = CHANNELS[sub_channel] || CHANNEL_GROUPS[sub_channel] || 
                                     CHANNELS[channel];
 
+                        if (channel.indexOf('-pnpres') >= 0) {
+                            chobj = CHANNELS[channel];
+
+                            channel = channel.split('-pnpres')[0];
+                        }
+
+
                         if (chobj) {
                             var callback = chobj['callback'];
                             var decrypted_message = decrypt(message['d'],
                             (CHANNELS[message['b'] || message['c']])?CHANNELS[message['b'] || message['c']]['cipher_key']:null)
                             callback && 
                             callback(decrypted_message, message['b'] || message['c'], 
-                                message['c'], _v2_expand_keys(message));
+                                channel, _v2_expand_keys(message));
                         }
                     }
 
