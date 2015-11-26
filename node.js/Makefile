@@ -24,4 +24,8 @@ clean:
 test:
 	mocha -R spec tests/test.js
 
+.PHONY: testv2
+testv2:
+	mocha -R spec tests/test_psv2.js
+
 include ../Makefile.post
