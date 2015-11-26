@@ -1,7 +1,7 @@
 {
   "name": "pubnub",
   "preferGlobal": false,
-  "version": "3.7.16",
+  "version": "3.7.18",
   "author": "PubNub <stephen@pubnub.com>",
   "description": "Publish & Subscribe Real-time Messaging with PubNub",
   "contributors": [
@@ -52,7 +52,7 @@
   },
   "files": [
     "node.js",
-    "web/pubnub.js",
+    "modern/pubnub.js",
     "CHANGELOG",
     "FUTURE.md",
     "LICENSE",

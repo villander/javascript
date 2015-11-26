@@ -1,11 +1,11 @@
-// 3.7.16
+// 3.7.18
 (function(){
 var NOW             = 1
 ,   READY           = false
 ,   READY_BUFFER    = []
 ,   PRESENCE_SUFFIX = '-pnpres'
 ,   DEF_WINDOWING   = 10     // MILLISECONDS.
-,   DEF_TIMEOUT     = 10000  // MILLISECONDS.
+,   DEF_TIMEOUT     = 15000  // MILLISECONDS.
 ,   DEF_SUB_TIMEOUT = 310    // SECONDS.
 ,   DEF_KEEPALIVE   = 60     // SECONDS (FOR TIMESYNC).
 ,   SECOND          = 1000   // A THOUSAND MILLISECONDS.
@@ -13,7 +13,7 @@ var NOW             = 1
 ,   PARAMSBIT       = '&'
 ,   PRESENCE_HB_THRESHOLD = 5
 ,   PRESENCE_HB_DEFAULT  = 30
-,   SDK_VER         = '3.7.16'
+,   SDK_VER         = '3.7.18'
 ,   REPL            = /{([\w\-]+)}/g;
 
 /**
@@ -626,7 +626,6 @@ function PN_API(setup) {
 
             xdr({
                 blocking : blocking || SSL,
-                timeout  : 2000,
                 callback : jsonp,
                 data     : params,
                 success  : function(response) {
@@ -682,7 +681,6 @@ function PN_API(setup) {
 
             xdr({
                 blocking : blocking || SSL,
-                timeout  : 5000,
                 callback : jsonp,
                 data     : params,
                 success  : function(response) {
@@ -1029,7 +1027,6 @@ function PN_API(setup) {
             xdr({
                 callback : jsonp,
                 data     : _get_url_params(data),
-                timeout  : SECOND * 5,
                 url      : [STD_ORIGIN, 'time', jsonp],
                 success  : function(response) { callback(response[0]) },
                 fail     : function() { callback(0) }
@@ -1098,7 +1095,6 @@ function PN_API(setup) {
             // Queue Message Send
             PUB_QUEUE[add_msg]({
                 callback : jsonp,
-                timeout  : SECOND * 5,
                 url      : url,
                 data     : _get_url_params(params),
                 fail     : function(response){
@@ -2122,7 +2118,6 @@ function PN_API(setup) {
             xdr({
                 callback : jsonp,
                 data     : _get_url_params(data),
-                timeout  : SECOND * 5,
                 url      : [
                     STD_ORIGIN, 'v2', 'presence',
                     'sub-key', SUBSCRIBE_KEY,
@@ -2362,9 +2357,8 @@ THE SOFTWARE.
  */
 var NOW        = 1
 ,   MAGIC   = /\$?{([\w\-]+)}/g
-,    PNSDK            = 'PubNub-JS-' + 'Titanium' + '/' +  '3.7.16'
-,   ANDROID = Ti.Platform.name.toLowerCase().indexOf('android') >= 0
-,   XHRTME     = 310000;
+,   PNSDK            = 'PubNub-JS-' + 'Titanium' + '/' +  '3.7.18'
+,   ANDROID = Ti.Platform.name.toLowerCase().indexOf('android') >= 0;
 
 
 
