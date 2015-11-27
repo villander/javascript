@@ -496,23 +496,32 @@ describe('Pubnub', function () {
                 auth_key: auth_key,
                 channel: channel,
                 callback: function () {
-                    pubnub_pam.subscribe({
-                        v2 : true,
-                        auth_key: auth_key,
-                        channel: channel,
-                        error: function (r) {
-                            assert.deepEqual(r['message'], 'Forbidden');
-                            assert.ok(r['payload'], "Payload should be there in error response");
-                            assert.ok(r['payload']['channels'], "Channels should be there in error payload");
-                            assert.ok(in_list_deep(r['payload']['channels'], channel), "Channel should be there in channel list");
-                            pubnub_pam.unsubscribe({'channel': channel});
-                            done();
+                    pubnub_pam.audit({
+                        auth_key : auth_key,
+                        channel : channel,
+                        error : function(r) {
+                           done(new Error("Erro in Audit " + JSON.stringify(r))); 
                         },
-                        callback: function () {
-                            done(new Error("Callback should not get invoked if permission not there"));
-                        },
-                        connect: function () {
-                            done(new Error("Connect should not get invoked if permission not there"));
+                        callback : function(r) {
+                            pubnub_pam.subscribe({
+                                v2 : true,
+                                auth_key: auth_key,
+                                channel: channel,
+                                error: function (r) {
+                                    assert.deepEqual(r['message'], 'Forbidden');
+                                    assert.ok(r['payload'], "Payload should be there in error response");
+                                    assert.ok(r['payload']['channels'], "Channels should be there in error payload");
+                                    assert.ok(in_list_deep(r['payload']['channels'], channel), "Channel should be there in channel list");
+                                    pubnub_pam.unsubscribe({'channel': channel});
+                                    done();
+                                },
+                                callback: function () {
+                                    done(new Error("Callback should not get invoked if permission not there"));
+                                },
+                                connect: function () {
+                                    done(new Error("Connect should not get invoked if permission not there"));
+                                }
+                            });
                         }
                     })
                 }
