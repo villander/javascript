@@ -332,7 +332,8 @@ function PN_API(setup) {
     ,   use_send_beacon = (typeof setup['use_send_beacon'] != 'undefined')?setup['use_send_beacon']:true
     ,   sendBeacon    = (use_send_beacon)?setup['sendBeacon']:null
     ,   _poll_timer
-    ,   _poll_timer2;
+    ,   _poll_timer2
+    ,   FILTER_EXPR;
 
     if (PRESENCE_HB === 2) PRESENCE_HB_INTERVAL = 1;
 
@@ -1220,6 +1221,7 @@ function PN_API(setup) {
             ,   restore         = args['restore'] || SUB_RESTORE;
 
             AUTH_KEY            = args['auth_key']    || AUTH_KEY;
+            FILTER_EXPR         = args['filter_expr'];
 
             // Restore Enabled?
             SUB_RESTORE = restore;
@@ -1412,6 +1414,10 @@ function PN_API(setup) {
                 _reset_offline();
 
                 var data = _get_url_params({ 'uuid' : UUID, 'auth' : AUTH_KEY });
+
+                if (FILTER_EXPR && FILTER_EXPR.length > 0) {
+                    data['filter-expr'] = FILTER_EXPR;
+                }
 
                 if (channel_groups) {
                     data['channel-group'] = channel_groups;

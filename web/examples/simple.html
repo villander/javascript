@@ -7,8 +7,8 @@
 //console.log(map);
 
 var pubnub = PUBNUB.init({
-    'publish_key' : 'demo',
-    'subscribe_key' : 'demo' 
+    'publish_key' : 'pam',
+    'subscribe_key' : 'pam' 
 });
 
 
@@ -24,6 +24,7 @@ pubnub.subscribe({
     */   
     'error'         : function(r) {
         console.log('ERROR');
+        console.log(x.t);
         console.log(JSON.stringify(r));  
     },    
     'disconnect'       : function(r) {

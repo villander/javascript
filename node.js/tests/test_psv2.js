@@ -8,15 +8,15 @@ if (typeof window == 'undefined') {
 var pubnub = PUBNUB.init({
     publish_key: 'ds',
     subscribe_key: 'ds',
-    origin: 'pubsub.pubnub.com',
+    origin: 'msgfiltering-dev.pubnub.com',
     build_u: true
 });
 
 var pubnub_pam = PUBNUB.init({
-    publish_key: 'pam',
-    subscribe_key: 'pam',
-    secret_key: 'pam',
-    origin: 'pubsub.pubnub.com',
+    publish_key: 'pub-c-0f16b5d0-edc2-4a56-8ec3-17106c525013',
+    subscribe_key: 'sub-c-977d0ee4-e14f-11e3-9bc6-02ee2ddab7fe',
+    secret_key: 'sec-c-YmYzNDBkNTYtZGIzZi00YWJiLThjNTMtNGNhMzIzM2Y0OWUy',
+    origin: 'msgfiltering-dev.pubnub.com',
     build_u: true
 });
 
@@ -24,7 +24,7 @@ var pubnub_enc = PUBNUB({
     publish_key: 'ds',
     subscribe_key: 'ds',
     cipher_key: 'enigma',
-    origin: 'pubsub.pubnub.com',
+    origin: 'msgfiltering-dev.pubnub.com',
     build_u: true
 });
 
@@ -213,7 +213,7 @@ describe('Pubnub', function () {
             var pubnub2 = PUBNUB.init({
                 publish_key: 'ds',
                 subscribe_key: 'ds',
-                origin: 'pubsub.pubnub.com',
+                origin: 'msgfiltering-dev.pubnub.com',
                 build_u: true
             });
             function f(x) {
@@ -283,7 +283,7 @@ describe('Pubnub', function () {
             var pubnub2 = PUBNUB.init({
                 publish_key: 'ds',
                 subscribe_key: 'ds',
-                origin: 'pubsub.pubnub.com',
+                origin: 'msgfiltering-dev.pubnub.com',
                 build_u: true
             });
             function f(x) {
@@ -504,7 +504,7 @@ describe('Pubnub', function () {
                         },
                         callback : function(r) {
                             pubnub_pam.subscribe({
-                                v2 : true,
+                                v2 : false,
                                 auth_key: auth_key,
                                 channel: channel,
                                 error: function (r) {
@@ -534,7 +534,7 @@ describe('Pubnub', function () {
                 events_count = 0,
                 uuid = Date.now(),
                 pubnub_pres = PUBNUB.init({
-                    origin: 'pubsub.pubnub.com',
+                    origin: 'msgfiltering-dev.pubnub.com',
                     publish_key: 'ds',
                     subscribe_key: 'ds',
                     uuid: uuid,
@@ -1219,12 +1219,12 @@ describe('Pubnub', function () {
     describe('#grant()', function () {
         var grant_channel = channel + '-grant';
         var auth_key = "abcd";
-        var sub_key = 'pam';
+        var sub_key = 'sub-c-977d0ee4-e14f-11e3-9bc6-02ee2ddab7fe';
         var pubnub = PUBNUB.init({
-            origin: 'pubsub.pubnub.com',
-            publish_key: 'pam',
-            subscribe_key: 'pam',
-            secret_key: 'pam',
+            origin: 'msgfiltering-dev.pubnub.com',
+            publish_key: 'pub-c-0f16b5d0-edc2-4a56-8ec3-17106c525013',
+            subscribe_key: 'sub-c-977d0ee4-e14f-11e3-9bc6-02ee2ddab7fe',
+            secret_key: 'sec-c-YmYzNDBkNTYtZGIzZi00YWJiLThjNTMtNGNhMzIzM2Y0OWUy',
             build_u: true
         });
 
@@ -1591,10 +1591,10 @@ describe('Pubnub', function () {
             var grant_channel_local = grant_channel + Date.now();
 
             var pubnub = PUBNUB.init({
-                origin: 'pubsub.pubnub.com',
-                publish_key: 'pam',
-                subscribe_key: 'pam',
-                secret_key: 'pam',
+                origin: 'msgfiltering-dev.pubnub.com',
+                publish_key: 'pub-c-0f16b5d0-edc2-4a56-8ec3-17106c525013',
+                subscribe_key: 'sub-c-977d0ee4-e14f-11e3-9bc6-02ee2ddab7fe',
+                secret_key: 'sec-c-YmYzNDBkNTYtZGIzZi00YWJiLThjNTMtNGNhMzIzM2Y0OWUy',
                 build_u: true
             });
 
@@ -1605,7 +1605,7 @@ describe('Pubnub', function () {
                     callback: function () {
                         pubnub.audit({
                             callback: function (response) {
-                                assert.deepEqual(response.subscribe_key, 'pam');
+                                assert.deepEqual(response.subscribe_key, 'sub-c-977d0ee4-e14f-11e3-9bc6-02ee2ddab7fe');
                                 pubnub.history({
                                     'channel': grant_channel_local,
                                     'auth_key': "",
@@ -1639,10 +1639,10 @@ describe('Pubnub', function () {
             var grant_channel_local = grant_channel + Date.now();
 
             var pubnub = PUBNUB.init({
-                origin: 'pubsub.pubnub.com',
-                publish_key: 'pam',
-                subscribe_key: 'pam',
-                secret_key: 'pam',
+                origin: 'msgfiltering-dev.pubnub.com',
+                publish_key: 'new-pam',
+                subscribe_key: 'new-pam',
+                secret_key: 'new-pam',
                 build_u: true
             });
 
@@ -1653,7 +1653,7 @@ describe('Pubnub', function () {
                     callback: function () {
                         pubnub.audit({
                             callback: function (response) {
-                                assert.deepEqual(response.subscribe_key, 'pam');
+                                assert.deepEqual(response.subscribe_key, 'new-pam');
                                 pubnub.history({
                                     'channel': grant_channel_local,
                                     'callback': function () {
@@ -1689,10 +1689,10 @@ describe('Pubnub', function () {
         var auth_key = "abcd";
 
         var pubnub = PUBNUB.init({
-            origin: 'pubsub.pubnub.com',
-            publish_key: 'pam',
-            subscribe_key: 'pam',
-            secret_key: 'pam',
+            origin: 'msgfiltering-dev.pubnub.com',
+            publish_key: 'pub-c-0f16b5d0-edc2-4a56-8ec3-17106c525013',
+            subscribe_key: 'sub-c-977d0ee4-e14f-11e3-9bc6-02ee2ddab7fe',
+            secret_key: 'sec-c-YmYzNDBkNTYtZGIzZi00YWJiLThjNTMtNGNhMzIzM2Y0OWUy',
             build_u: true
         });
 
@@ -1757,7 +1757,7 @@ describe('Pubnub', function () {
             publish_key: 'ds',  //'demo',
             subscribe_key: 'ds', //'demo',
             uuid: uuid,
-            origin: 'pubsub.pubnub.com',
+            origin: 'msgfiltering-dev.pubnub.com',
             build_u: true
         });
 
@@ -1836,7 +1836,7 @@ describe('Pubnub', function () {
             publish_key: 'ds', // 'demo',
             subscribe_key: 'ds', // 'demo',
             uuid: uuid,
-            origin: 'pubsub.pubnub.com',
+            origin: 'msgfiltering-dev.pubnub.com',
             build_u: true
         });
 
@@ -1879,7 +1879,7 @@ describe('Pubnub', function () {
             , uuid3 = uuid + '-3';
 
         var pubnub_pres = PUBNUB.init({
-            origin: 'pubsub.pubnub.com',
+            origin: 'msgfiltering-dev.pubnub.com',
             publish_key: 'ds', // 'demo',
             subscribe_key: 'ds',  // 'demo',
             uuid: uuid,
@@ -1887,7 +1887,7 @@ describe('Pubnub', function () {
         });
 
         var pubnub_pres_1 = PUBNUB.init({
-            origin: 'pubsub.pubnub.com',
+            origin: 'msgfiltering-dev.pubnub.com',
             publish_key: 'ds', // 'demo',
             subscribe_key: 'ds',  // 'demo',
             uuid: uuid1,
@@ -1895,7 +1895,7 @@ describe('Pubnub', function () {
         });
 
         var pubnub_pres_2 = PUBNUB.init({
-            origin: 'pubsub.pubnub.com',
+            origin: 'msgfiltering-dev.pubnub.com',
             publish_key: 'ds', // 'demo',
             subscribe_key: 'ds',  // 'demo',
             uuid: uuid2,
@@ -1903,7 +1903,7 @@ describe('Pubnub', function () {
         });
 
         var pubnub_pres_3 = PUBNUB.init({
-            origin: 'pubsub.pubnub.com',
+            origin: 'msgfiltering-dev.pubnub.com',
             publish_key: 'ds', // 'demo',
             subscribe_key: 'ds',  // 'demo',
             uuid: uuid3,
