@@ -36,6 +36,7 @@ var NOW                 = 1
 ,   http                = require('http')
 ,   https               = require('https')
 ,   PNSDK               = 'PubNub-JS-' + PLATFORM + '/' +  VERSION
+,   PNDEBUG             = process.env.PNDEBUG
 ,   crypto              = require('crypto')
 ,   proxy               = null
 ,   XORIGN              = 1
@@ -107,6 +108,8 @@ function xdr( setup ) {
                 debug_method(body)
             } else if (debug) {
                 debug(body);
+            } else if (PNDEBUG) {
+                console.log(body);
             }
 
             try       { response = JSON['parse'](body); }
@@ -143,6 +146,8 @@ function xdr( setup ) {
         debug_method(url)
     } else if (debug) {
         debug(url);
+    } else if (PNDEBUG) {
+        console.log(url);
     }
 
     if (!ssl) ssl = (url.split('://')[0] == 'https');

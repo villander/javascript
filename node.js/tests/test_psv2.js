@@ -164,6 +164,245 @@ describe('Pubnub', function () {
 
     describe('#subscribe()', function () {
 
+        it('should received a message without filter, when message is published with no metadata [FILTER_TEST]', function(done){
+
+            var random  = get_random();
+            var ch      = 'channel-' + random;
+
+            pubnub.subscribe({
+                v2 : true,
+                channel: ch,
+                connect: function () {
+                    setTimeout(function(){
+                        pubnub.publish({
+                            'channel' : ch,
+                            message : 'message' + ch,
+                            callback : function(r) {
+                                assert.ok(true, 'message published');
+                            },
+                            error : function(r) {
+                                assert.ok(false, 'error occurred in publish');
+                            }
+                        });
+                    }, 2000);
+
+                },
+                callback: function (response) {
+                    assert.deepEqual(response, 'message' + ch);
+                    pubnub.unsubscribe({channel: ch});
+                    done();
+                },
+                error: function () {
+                    assert.ok(false);
+                    pubnub.unsubscribe({channel: ch});
+                    done();
+                }
+            });  
+        });
+
+        it('should not receive a message with filtering attribute foo==bar, when message is published with no metadata [FILTER_TEST]', function(done){
+            var random  = get_random();
+            var ch      = 'channel-' + random;
+
+            setTimeout(function(){
+                pubnub.unsubscribe({channel: ch});
+                done();
+            }, 5000);
+
+            pubnub.subscribe({
+                filter_expr : '(foo=="bar")',
+                v2 : true,
+                channel: ch,
+                connect: function () {
+                    setTimeout(function(){
+                        pubnub.publish({
+                            'channel' : ch,
+                            message : 'message' + ch,
+                            callback : function(r) {
+                                assert.ok(true, 'message published');
+                            },
+                            error : function(r) {
+                                assert.ok(false, 'error occurred in publish');
+                            }
+                        });
+                    }, 2000);
+                },
+                callback: function (response) {
+                    assert.ok(false);
+                    pubnub.unsubscribe({channel: ch});
+                    done();
+                },
+                error: function () {
+                    assert.ok(false);
+                    pubnub.unsubscribe({channel: ch});
+                    done();
+                }
+            }); 
+        });
+
+        it('should not receive a message with filtering attribute a==b, when message is published with metadata foo:bar [FILTER_TEST]', function(done){
+            var random  = get_random();
+            var ch      = 'channel-' + random;
+            
+            setTimeout(function(){
+                pubnub.unsubscribe({channel: ch});
+                done();
+            }, 5000);
+
+            pubnub.subscribe({
+                filter_expr : '(a=="b")',
+                v2 : true,
+                channel: ch,
+                connect: function () {
+                    setTimeout(function(){
+                        pubnub.publish({
+                            'channel' : ch,
+                            meta : { 'foo' : 'bar'},
+                            message : 'message' + ch,
+                            callback : function(r) {
+                                assert.ok(true, 'message published');
+                            },
+                            error : function(r) {
+                                assert.ok(false, 'error occurred in publish');
+                            }
+                        });
+                    }, 2000);
+                },
+                callback: function (response) {
+                    assert.ok(false);
+                    pubnub.unsubscribe({channel: ch});
+                    done();
+                },
+                error: function () {
+                    assert.ok(false);
+                    pubnub.unsubscribe({channel: ch});
+                    done();
+                }
+            }); 
+
+        });
+
+        it('should not receive a message with filtering attribute foo==b, when message is published with metadata foo:bar [FILTER_TEST]', function(done){
+            var random  = get_random();
+            var ch      = 'channel-' + random;
+            
+            setTimeout(function(){
+                pubnub.unsubscribe({channel: ch});
+                done();
+            }, 5000);
+
+            pubnub.subscribe({
+                filter_expr : '(foo=="b")',
+                v2 : true,
+                channel: ch,
+                connect: function () {
+                    setTimeout(function(){
+                        pubnub.publish({
+                            'channel' : ch,
+                            meta : { 'foo' : 'bar'},
+                            message : 'message' + ch,
+                            callback : function(r) {
+                                assert.ok(true, 'message published');
+                            },
+                            error : function(r) {
+                                assert.ok(false, 'error occurred in publish');
+                            }
+                        });
+                    }, 2000);
+                },
+                callback: function (response) {
+                    assert.ok(false);
+                    pubnub.unsubscribe({channel: ch});
+                    done();
+                },
+                error: function () {
+                    assert.ok(false);
+                    pubnub.unsubscribe({channel: ch});
+                    done();
+                }
+            }); 
+        });
+
+        it('should not receive a message with filtering attribute bar==foo, when message is published with metadata foo:bar [FILTER_TEST]', function(done){
+            var random  = get_random();
+            var ch      = 'channel-' + random;
+            
+            setTimeout(function(){
+                pubnub.unsubscribe({channel: ch});
+                done();
+            }, 5000);
+
+            pubnub.subscribe({
+                filter_expr : '(bar=="foo")',
+                v2 : true,
+                channel: ch,
+                connect: function () {
+                    setTimeout(function(){
+                        pubnub.publish({
+                            'channel' : ch,
+                            meta : { 'foo' : 'bar'},
+                            message : 'message' + ch,
+                            callback : function(r) {
+                                assert.ok(true, 'message published');
+                            },
+                            error : function(r) {
+                                assert.ok(false, 'error occurred in publish');
+                            }
+                        });
+                    }, 2000);
+                },
+                callback: function (response) {
+                    assert.ok(false);
+                    done();
+                },
+                error: function () {
+                    assert.ok(false);
+                    pubnub.unsubscribe({channel: ch});
+                    done();
+                }
+            }); 
+        });
+
+        it('should receive a message with filtering attribute foo==bar, when message is published with metadata foo:bar [FILTER_TEST]', function(done){
+            var random  = get_random();
+            var ch      = 'channel-' + random;
+            
+            this.timeout(5000);
+
+            pubnub.subscribe({
+                filter_expr : '(foo=="bar")',
+                v2 : true,
+                channel: ch,
+                connect: function () {
+                    setTimeout(function(){
+                        pubnub.publish({
+                            'channel' : ch,
+                            meta : { 'foo' : 'bar'},
+                            message : 'message' + ch,
+                            callback : function(r) {
+                                assert.ok(true, 'message published');
+                            },
+                            error : function(r) {
+                                assert.ok(false, 'error occurred in publish');
+                            }
+                        });
+                    }, 2000);
+                },
+                callback: function (response) {
+                    assert.deepEqual(response, 'message' + ch);
+                    pubnub.unsubscribe({channel: ch});
+                    done();
+                },
+                error: function () {
+                    assert.ok(false);
+                    pubnub.unsubscribe({channel: ch});
+                    done();
+                }
+            }); 
+        });
+
+
+
         it('should should message sent to a channel which matches wildcard', function (done) {
 
             var random  = get_random();
