@@ -1052,7 +1052,7 @@ function PN_API(setup) {
             ,   store    = ('store_in_history' in args) ? args['store_in_history']: true
             ,   jsonp    = jsonp_cb()
             ,   add_msg  = 'push'
-            ,   meta     = args['meta']
+            ,   meta     = args['meta'] || args['metadata']
             ,   params
             ,   url;
 

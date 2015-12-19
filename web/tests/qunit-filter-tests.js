@@ -1,6 +1,74 @@
 
 var ORIGIN = 'msgfiltering-dev.pubnub.com';
 
+
+QUnit.module('Example', {
+  setupOnce: function () {
+    var pubnub = _pubnub_init({
+        publish_key: test_publish_key,
+        subscribe_key: test_subscribe_key,
+        origin : ORIGIN
+    });
+    pubnub.channel_group_list_groups({
+        callback: function (r) {
+            var groups = r.groups;
+            for (var i in groups) {
+                var group = groups[i];
+                pubnub.channel_group_remove_group({
+                    channel_group: group
+                })
+            }
+        }
+    });
+
+    pubnub.channel_group_list_namespaces({
+        callback: function (r) {
+            var namespaces = r.namespaces;
+            for (var i in namespaces) {
+                var namespace = namespaces[i];
+                pubnub.channel_group_remove_namespace({
+                    namespace: namespace
+                })
+            }
+        }
+    });
+  },
+  setup: function () {
+    // runs before each unit test 
+  },
+  teardown: function () {
+    // runs after EACH unit test in this module 
+  },
+  teardownOnce: function () {
+    // runs once after all unit tests finished (including teardown) 
+    pubnub.channel_group_list_groups({
+        callback: function (r) {
+            var groups = r.groups;
+            for (var i in groups) {
+                var group = groups[i];
+                pubnub.channel_group_remove_group({
+                    channel_group: group
+                })
+            }
+        }
+    });
+
+    pubnub.channel_group_list_namespaces({
+        callback: function (r) {
+            var namespaces = r.namespaces;
+            for (var i in namespaces) {
+                var namespace = namespaces[i];
+                pubnub.channel_group_remove_namespace({
+                    namespace: namespace
+                })
+            }
+        }
+    });
+  }
+});
+
+
+
 function filter_test(test_name, test_func) {
     var message = 'message' + get_random();
     var message_unicode = '☺';
@@ -265,7 +333,7 @@ if message is published on a channel with metadata foo:bar', function(config){
            
 });
 
-filter_test('subscribe() should receive message when subscribed using filter bar==foo, \
+filter_test('subscribe() should not receive message when subscribed using filter bar==foo, \
 if message is published on a channel with metadata foo:bar', function(config){
     var random  = get_random();
     var ch      = 'channel-' + random;
@@ -287,7 +355,7 @@ if message is published on a channel with metadata foo:bar', function(config){
 
     _pubnub_subscribe(pubnub, {
         channel: ch,
-        filter_expr : '(foo=="bar")',
+        filter_expr : '(bar=="foo")',
         connect: function () {
             setTimeout(function(){
                 pubnub.publish({
@@ -665,7 +733,7 @@ if message is published on a channel with metadata foo:bar', function(config){
            
 });
 
-filter_test('subscribe() should receive message when subscribed to wildcard using filter bar==foo, \
+filter_test('subscribe() not should receive message when subscribed to wildcard using filter bar==foo, \
 if message is published on a channel with metadata foo:bar', function(config){
     var random  = get_random();
     var ch      = 'channel-' + random;
@@ -689,7 +757,7 @@ if message is published on a channel with metadata foo:bar', function(config){
 
     _pubnub_subscribe(pubnub, {
         channel: chw,
-        filter_expr : '(foo=="bar")',
+        filter_expr : '(bar=="foo")',
         connect: function () {
             setTimeout(function(){
                 pubnub.publish({
@@ -1119,7 +1187,7 @@ if message is published on a channel with metadata foo:bar', function(config){
            
 });
 
-filter_test('subscribe() should receive message when subscribed to channel group using filter bar==foo, \
+filter_test('subscribe() not should receive message when subscribed to channel group using filter bar==foo, \
 if message is published on a channel with metadata foo:bar', function(config){
     var random  = get_random();
     var ch      = 'channel-' + random;
@@ -1147,7 +1215,7 @@ if message is published on a channel with metadata foo:bar', function(config){
 
             _pubnub_subscribe(pubnub, {
                 channel_group: chg,
-                filter_expr : '(foo=="bar")',
+                filter_expr : '(bar=="foo")',
                 connect: function () {
                     setTimeout(function(){
                         pubnub.publish({
@@ -1205,7 +1273,7 @@ if message is published on a channel with metadata foo:bar (multiple messages in
         'channels'      : chgc,
         'callback'      : function(r) {
             _pubnub_subscribe(pubnub, {
-                channel: chg,
+                channel_group: chg,
                 filter_expr : '(foo=="bar")',
                 windowing : 6000,
                 connect: function () {
