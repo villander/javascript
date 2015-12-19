@@ -2,7 +2,7 @@
 var ORIGIN = 'msgfiltering-dev.pubnub.com';
 
 
-QUnit.module('Example', {
+QUnit.module('PSV2 FILTERING', {
   setupOnce: function () {
     var pubnub = _pubnub_init({
         publish_key: test_publish_key,
