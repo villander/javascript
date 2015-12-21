@@ -2,6 +2,15 @@ var test_publish_key = 'ds';
 var test_subscribe_key = 'ds';
 var test_secret_key = 'ds';
 
+QUnit.config.reorder = false;
+//QUnit.config.autostart = false;
+
+QUnit.done(function( details ) {
+  console.log( "Total: ", details.total, " Failed: ", details.failed, " Passed: ", details.passed, " Runtime: ", details.runtime );
+});
+
+QUnit.config.scrolltop = false;
+
 var pubnub = PUBNUB.init({
     publish_key   : test_publish_key,
     subscribe_key : test_subscribe_key,
@@ -16,12 +25,14 @@ var pubnub_enc = PUBNUB({
 });
 
 var channel = 'javascript-test-channel-' + Math.floor((Math.random() * 10) + 1);
-var count = 0;
+var count;
 
 var message_string = 'Hi from Javascript';
 var message_jsono = {"message": "Hi Hi from Javascript"};
 var message_jsona = ["message" , "Hi Hi from javascript"];
 
+var tests_added = 0;
+var tests_total = 8 * 21;
 
 function get_random(){
     return Math.floor((Math.random() * 100000000000) + 1);
@@ -60,8 +71,10 @@ function _pubnub_publish(pubnub, args, config) {
     return pubnub.publish(args);
 }
 
+var count = 0;
 
-function pubnub_test(test_name, test_func, config) {
+var tests = [];
+function pubnub_test(test_name, test_func, config, stops, delay) {
     if (config) {
         if (config.ssl) {
             test_name += ' [SSL] ';
@@ -82,35 +95,77 @@ function pubnub_test(test_name, test_func, config) {
             test_name += ' [UNICODE]'
         }
     }
+
     test(test_name, function(){
         test_func(config);
     });
+
+    //if(tests_total == ++tests_added) QUnit.start();
+
+    /*
+    test(test_name, function(){
+        stops && stop(stops);
+        setTimeout(function(){
+            test_func(config);
+        }, ++count * 1);
+    });
+    */
+    /*
+    test(test_name, function(){
+        console.log(test_name);
+        var f = (function() {
+            console.log('Length : ' + tests.length);
+            test_func(config);
+        });
+        //stops && stop(stops);
+
+        tests.push(f);
+
+    });
+    */
+    
+
 }
 
-function pubnub_test_all(test_name, test_func) {
-    /*
-    pubnub_test(test_name, test_func);
-    //pubnub_test(test_name, test_func, {jsonp : true});
-    pubnub_test(test_name, test_func, {ssl : true});
-    //pubnub_test(test_name, test_func, {cipher_key : 'enigma'});
+function init() {
+    
+    console.log('INIT');
+    var t = tests.shift();
+    console.log(t);
+    //t.func(t.config);
+    t && t();
+    
+}
+
+function finish() {
+    start();
+    //init();
+}
+
+function pubnub_test_all(test_name, test_func, stops) {
+    
+    pubnub_test(test_name, test_func, null, stops);
+    pubnub_test(test_name, test_func, {jsonp : true}, stops);
+    pubnub_test(test_name, test_func, {ssl : true}, stops);
+    pubnub_test(test_name, test_func, {cipher_key : 'enigma'}, stops);
     pubnub_test(test_name, test_func, {
         presence : function(r){
             if (!r.action) { ok(false, "presence called"); start()};
         }
-    });
-    //pubnub_test(test_name, test_func, {jsonp : true, ssl : true, cipher_key : 'enigma'});
-    //pubnub_test(test_name, test_func, {jsonp : true, ssl : true});
-    */
-    pubnub_test(test_name, test_func, {psv2 : true});
-    //pubnub_test(test_name, test_func, {jsonp : true, psv2 : true});
-    pubnub_test(test_name, test_func, {ssl : true, psv2 : true});
-    //pubnub_test(test_name, test_func, {cipher_key : 'enigma', psv2 : true});
+    }, stops);
+    pubnub_test(test_name, test_func, {jsonp : true, ssl : true, cipher_key : 'enigma'}, stops);
+    pubnub_test(test_name, test_func, {jsonp : true, ssl : true}, stops);
+    
+    pubnub_test(test_name, test_func, stops);
+    pubnub_test(test_name, test_func, {jsonp : true}, stops);
+    pubnub_test(test_name, test_func, {ssl : true}, stops);
+    pubnub_test(test_name, test_func, {cipher_key : 'enigma'}, stops);
     pubnub_test(test_name, test_func, {
         presence : function(r){
             if (!r.action) { ok(false, "presence called"); start()};
-        }, psv2 : true
-    });
-    //pubnub_test(test_name, test_func, {jsonp : true, ssl : true, cipher_key : 'enigma', psv2 : true});
-    //pubnub_test(test_name, test_func, {jsonp : true, ssl : true, psv2 : true});
+        }
+    }, stops);
+    pubnub_test(test_name, test_func, {jsonp : true, ssl : true, cipher_key : 'enigma'}, stops);
+    pubnub_test(test_name, test_func, {jsonp : true, ssl : true}, stops);
 }
 

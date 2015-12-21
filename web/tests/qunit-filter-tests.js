@@ -1,6 +1,8 @@
 
 var ORIGIN = 'msgfiltering-dev.pubnub.com';
 
+var TIMEOUT = 20000;
+
 
 QUnit.module('PSV2 FILTERING', {
   setupOnce: function () {
@@ -37,7 +39,7 @@ QUnit.module('PSV2 FILTERING', {
     // runs before each unit test 
   },
   teardown: function () {
-    // runs after EACH unit test in this module 
+
   },
   teardownOnce: function () {
     // runs once after all unit tests finished (including teardown) 
@@ -68,22 +70,22 @@ QUnit.module('PSV2 FILTERING', {
 });
 
 
-
-function filter_test(test_name, test_func) {
+function filter_test(test_name, test_func, stops) {
     var message = 'message' + get_random();
     var message_unicode = '☺';
 
-    pubnub_test(test_name, test_func, {psv2 : true, message : message});
-    pubnub_test(test_name, test_func, {psv2 : true, message : message, ssl : true})
-    pubnub_test(test_name, test_func, {psv2 : true, message : message, cipher_key : 'enigma'})
-    pubnub_test(test_name, test_func, {psv2 : true, message : message, ssl : true, cipher_key : 'enigma'})
+    pubnub_test(test_name, test_func, {psv2 : true, message : message}, stops);
+    pubnub_test(test_name, test_func, {psv2 : true, message : message, ssl : true}, stops)
+    pubnub_test(test_name, test_func, {psv2 : true, message : message, cipher_key : 'enigma'}, stops)
+    pubnub_test(test_name, test_func, {psv2 : true, message : message, ssl : true, cipher_key : 'enigma'}, stops)
 
-    pubnub_test(test_name, test_func, {psv2 : true, message : message_unicode, unicode : true});
-    pubnub_test(test_name, test_func, {psv2 : true, message : message_unicode, ssl : true, unicode : true})
-    pubnub_test(test_name, test_func, {psv2 : true, message : message_unicode, cipher_key : 'enigma', unicode : true})
-    pubnub_test(test_name, test_func, {psv2 : true, message : message_unicode, ssl : true, cipher_key : 'enigma', unicode : true})
-
+    pubnub_test(test_name, test_func, {psv2 : true, message : message_unicode, unicode : true}, stops);
+    pubnub_test(test_name, test_func, {psv2 : true, message : message_unicode, ssl : true, unicode : true}, stops)
+    pubnub_test(test_name, test_func, {psv2 : true, message : message_unicode, cipher_key : 'enigma', unicode : true}, stops)
+    pubnub_test(test_name, test_func, {psv2 : true, message : message_unicode, ssl : true, cipher_key : 'enigma', unicode : true}, stops)
+    
 }
+
 
 filter_test('subscribe() should receive message when subscribed without filter, \
 if message is published on a channel without metadata', function(config){
@@ -97,9 +99,8 @@ if message is published on a channel without metadata', function(config){
     }, config);
 
     expect(2);
+
     stop(1);
-
-
 
     _pubnub_subscribe(pubnub, {
         channel: ch,
@@ -115,12 +116,12 @@ if message is published on a channel without metadata', function(config){
                         ok(false, 'error occurred in publish');
                     }
                 })
-            }, 1000);
+            }, 100);
         },
         callback: function (response) {
             deepEqual(response, config.message, "message received 2");
             pubnub.unsubscribe({channel: ch});
-            start();
+            finish();
         },
         error: function () {
             ok(false);
@@ -129,7 +130,7 @@ if message is published on a channel without metadata', function(config){
         }
     }, config);
            
-});
+}, 1);
 
 
 
@@ -145,10 +146,9 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(2);
+
     stop(1);
-
-
-
+    
     _pubnub_subscribe(pubnub, {
         channel: ch,
         filter_expr : '(foo=="bar")',
@@ -165,7 +165,7 @@ if message is published on a channel with metadata foo:bar', function(config){
                         ok(false, 'error occurred in publish');
                     }
                 })
-            }, 1000);
+            }, 100);
         },
         callback: function (response) {
             deepEqual(response, config.message, "message received 2");
@@ -179,7 +179,8 @@ if message is published on a channel with metadata foo:bar', function(config){
         }
     }, config);
            
-});
+}, 1);
+
 
 filter_test('subscribe() should not receive message when subscribed using filter foo==bar, \
 if message is published on a channel with no metadata', function(config){
@@ -193,12 +194,13 @@ if message is published on a channel with no metadata', function(config){
     }, config);
 
     expect(1);
-    stop(1);
 
+    stop(1);
+    
     setTimeout(function(){
         pubnub.unsubscribe({channel: ch});
         start();
-    }, 5000);
+    }, TIMEOUT);
 
     _pubnub_subscribe(pubnub, {
         channel: ch,
@@ -215,12 +217,11 @@ if message is published on a channel with no metadata', function(config){
                         ok(false, 'error occurred in publish');
                     }
                 })
-            }, 1000);
+            }, 100);
         },
         callback: function (response) {
             ok(false, "received message 1");
             pubnub.unsubscribe({channel: ch});
-            //start();
         },
         error: function (r) {
             ok(false, JSON.stringify(r));
@@ -229,7 +230,7 @@ if message is published on a channel with no metadata', function(config){
         }
     }, config);
            
-});
+}, 1);
 
 filter_test('subscribe() should not receive message when subscribed using filter a==b, \
 if message is published on a channel with metadata foo:bar', function(config){
@@ -243,12 +244,13 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(1);
-    stop(1);
 
+    stop(1);
+    
     setTimeout(function(){
         pubnub.unsubscribe({channel: ch});
-        start();
-    }, 5000);
+        finish();
+    }, TIMEOUT);
 
     _pubnub_subscribe(pubnub, {
         channel: ch,
@@ -266,12 +268,12 @@ if message is published on a channel with metadata foo:bar', function(config){
                         ok(false, 'error occurred in publish');
                     }
                 })
-            }, 1000);
+            }, 100);
         },
         callback: function (response) {
             ok(false, "received message");
             pubnub.unsubscribe({channel: ch});
-            start();
+            finish();
         },
         error: function () {
             ok(false);
@@ -280,7 +282,7 @@ if message is published on a channel with metadata foo:bar', function(config){
         }
     }, config);
            
-});
+}, 1);
 
 filter_test('subscribe() should not receive message when subscribed using filter foo==b, \
 if message is published on a channel with metadata foo:bar', function(config){
@@ -294,11 +296,13 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(1);
+
     stop(1);
+    
     setTimeout(function(){
         pubnub.unsubscribe({channel: ch});
-        start();
-    }, 5000);
+        finish();
+    }, TIMEOUT);
 
 
     _pubnub_subscribe(pubnub, {
@@ -322,7 +326,7 @@ if message is published on a channel with metadata foo:bar', function(config){
         callback: function (response) {
             ok(false, "received message");
             pubnub.unsubscribe({channel: ch});
-            start();
+            finish();
         },
         error: function () {
             ok(false);
@@ -331,7 +335,7 @@ if message is published on a channel with metadata foo:bar', function(config){
         }
     }, config);
            
-});
+}, 1);
 
 filter_test('subscribe() should not receive message when subscribed using filter bar==foo, \
 if message is published on a channel with metadata foo:bar', function(config){
@@ -345,12 +349,13 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(1);
-    stop(1);
 
+    stop(1);
+    
     setTimeout(function(){
         pubnub.unsubscribe({channel: ch});
-        start();
-    }, 5000);
+        finish();
+    }, TIMEOUT);
 
 
     _pubnub_subscribe(pubnub, {
@@ -374,7 +379,7 @@ if message is published on a channel with metadata foo:bar', function(config){
         callback: function (response) {
             ok(false, "message received");
             pubnub.unsubscribe({channel: ch});
-            start();
+            finish();
         },
         error: function () {
             ok(false);
@@ -383,7 +388,7 @@ if message is published on a channel with metadata foo:bar', function(config){
         }
     }, config);
            
-});
+}, 1);
 
 filter_test('subscribe() should receive message when subscribed using filter foo==bar, \
 if message is published on a channel with metadata foo:bar (multiple messages in response)', function(config){
@@ -397,10 +402,9 @@ if message is published on a channel with metadata foo:bar (multiple messages in
     }, config);
 
     expect(5);
+
     stop(1);
-
-
-
+    
     _pubnub_subscribe(pubnub, {
         channel: ch,
         filter_expr : '(foo=="bar")',
@@ -462,7 +466,7 @@ if message is published on a channel with metadata foo:bar (multiple messages in
         callback: function (response) {
             deepEqual(response, config.message, "message received 2");
             pubnub.unsubscribe({channel: ch});
-            start();
+            finish();
         },
         error: function () {
             ok(false);
@@ -471,7 +475,7 @@ if message is published on a channel with metadata foo:bar (multiple messages in
         }
     }, config);
            
-});
+}, 1);
 
 
 
@@ -489,10 +493,9 @@ if message is published on a channel without metadata', function(config){
     }, config);
 
     expect(2);
+
     stop(1);
-
-
-
+    
     _pubnub_subscribe(pubnub, {
         channel: chw,
         connect: function () {
@@ -507,12 +510,12 @@ if message is published on a channel without metadata', function(config){
                         ok(false, 'error occurred in publish');
                     }
                 })
-            }, 1000);
+            }, 100);
         },
         callback: function (response) {
             deepEqual(response, config.message, "message received 2");
             pubnub.unsubscribe({channel: chw});
-            start();
+            finish();
         },
         error: function () {
             ok(false);
@@ -521,7 +524,7 @@ if message is published on a channel without metadata', function(config){
         }
     }, config);
            
-});
+}, 1);
 
 
 
@@ -539,10 +542,10 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(2);
+
+
     stop(1);
-
-
-
+    
     _pubnub_subscribe(pubnub, {
         channel: chw,
         filter_expr : '(foo=="bar")',
@@ -564,7 +567,7 @@ if message is published on a channel with metadata foo:bar', function(config){
         callback: function (response) {
             deepEqual(response, config.message, "message received 2");
             pubnub.unsubscribe({channel: chw});
-            start();
+            finish();
         },
         error: function () {
             ok(false);
@@ -573,7 +576,7 @@ if message is published on a channel with metadata foo:bar', function(config){
         }
     }, config);
            
-});
+}, 1);
 
 filter_test('subscribe() should not receive message when subscribed to wildcard using filter foo==bar, \
 if message is published on a channel with no metadata', function(config){
@@ -589,11 +592,12 @@ if message is published on a channel with no metadata', function(config){
     }, config);
 
     expect(1);
-    stop(1);
 
+    stop(1);
+    
     setTimeout(function(){
         pubnub.unsubscribe({channel: chw});
-        start();
+        finish();
     }, 5000);
 
     _pubnub_subscribe(pubnub, {
@@ -611,12 +615,11 @@ if message is published on a channel with no metadata', function(config){
                         ok(false, 'error occurred in publish');
                     }
                 })
-            }, 1000);
+            }, 100);
         },
         callback: function (response) {
             ok(false, "received message 1");
             pubnub.unsubscribe({channel: chw});
-            //start();
         },
         error: function (r) {
             ok(false, JSON.stringify(r));
@@ -625,7 +628,7 @@ if message is published on a channel with no metadata', function(config){
         }
     }, config);
            
-});
+}, 1);
 
 filter_test('subscribe() should not receive message when subscribed to wildcard using filter a==b, \
 if message is published on a channel with metadata foo:bar', function(config){
@@ -641,11 +644,12 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(1);
-    stop(1);
 
+    stop(1);
+    
     setTimeout(function(){
         pubnub.unsubscribe({channel: chw});
-        start();
+        finish();
     }, 5000);
 
     _pubnub_subscribe(pubnub, {
@@ -664,12 +668,12 @@ if message is published on a channel with metadata foo:bar', function(config){
                         ok(false, 'error occurred in publish');
                     }
                 })
-            }, 1000);
+            }, 100);
         },
         callback: function (response) {
             ok(false, "received message");
             pubnub.unsubscribe({channel: ch});
-            start();
+            finish();
         },
         error: function () {
             ok(false);
@@ -678,7 +682,7 @@ if message is published on a channel with metadata foo:bar', function(config){
         }
     }, config);
            
-});
+}, 1);
 
 filter_test('subscribe() should not receive message when subscribed to wildcard using filter foo==b, \
 if message is published on a channel with metadata foo:bar', function(config){
@@ -694,10 +698,12 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(1);
+
     stop(1);
+    
     setTimeout(function(){
         pubnub.unsubscribe({channel: chw});
-        start();
+        finish();
     }, 5000);
 
 
@@ -717,12 +723,12 @@ if message is published on a channel with metadata foo:bar', function(config){
                         ok(false, 'error occurred in publish');
                     }
                 })
-            }, 1000);
+            }, 100);
         },
         callback: function (response) {
             ok(false, "received message");
             pubnub.unsubscribe({channel: chw});
-            start();
+            finish();
         },
         error: function () {
             ok(false);
@@ -731,7 +737,7 @@ if message is published on a channel with metadata foo:bar', function(config){
         }
     }, config);
            
-});
+}, 1);
 
 filter_test('subscribe() not should receive message when subscribed to wildcard using filter bar==foo, \
 if message is published on a channel with metadata foo:bar', function(config){
@@ -747,11 +753,12 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(1);
-    stop(1);
 
+    stop(1);
+    
     setTimeout(function(){
         pubnub.unsubscribe({channel: chw});
-        start();
+        finish();
     }, 5000);
 
 
@@ -776,7 +783,7 @@ if message is published on a channel with metadata foo:bar', function(config){
         callback: function (response) {
             ok(false, "message received");
             pubnub.unsubscribe({channel: chw});
-            start();
+            finish();
         },
         error: function () {
             ok(false);
@@ -785,7 +792,7 @@ if message is published on a channel with metadata foo:bar', function(config){
         }
     }, config);
            
-});
+}, 1);
 
 
 filter_test('subscribe() should receive message when subscribed to wildcard using filter foo==bar, \
@@ -802,10 +809,9 @@ if message is published on a channel with metadata foo:bar (multiple messages in
     }, config);
 
     expect(5);
+
     stop(1);
-
-
-
+    
     _pubnub_subscribe(pubnub, {
         channel: chw,
         filter_expr : '(foo=="bar")',
@@ -867,7 +873,7 @@ if message is published on a channel with metadata foo:bar (multiple messages in
         callback: function (response) {
             deepEqual(response, config.message, "message received 2");
             pubnub.unsubscribe({channel: chw});
-            start();
+            finish();
         },
         error: function () {
             ok(false);
@@ -876,7 +882,7 @@ if message is published on a channel with metadata foo:bar (multiple messages in
         }
     }, config);
            
-});
+}, 1);
 
 
 
@@ -894,9 +900,9 @@ if message is published on a channel without metadata', function(config){
     }, config);
 
     expect(2);
+
     stop(1);
-
-
+    
     pubnub.channel_group_add_channel({
         'channel_group' : chg,
         'channels'      : chgc,
@@ -915,12 +921,12 @@ if message is published on a channel without metadata', function(config){
                                 ok(false, 'error occurred in publish');
                             }
                         })
-                    }, 1000);
+                    }, 100);
                 },
                 callback: function (response) {
                     deepEqual(response, config.message, "message received 2");
                     pubnub.unsubscribe({channel_group: chg});
-                    start();
+                    finish();
                 },
                 error: function () {
                     ok(false);
@@ -931,11 +937,11 @@ if message is published on a channel without metadata', function(config){
         },
         'error'         : function(r) {
             ok(false, "error occurred in adding channel to group");
-            start();
+            finish();
         }
     });
            
-});
+}, 1);
 
 
 
@@ -953,8 +959,9 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(2);
-    stop(1);
 
+    stop(1);
+    
     pubnub.channel_group_add_channel({
         'channel_group' : chg,
         'channels'      : chgc,
@@ -975,12 +982,12 @@ if message is published on a channel with metadata foo:bar', function(config){
                                 ok(false, 'error occurred in publish');
                             }
                         })
-                    }, 1000);
+                    }, 100);
                 },
                 callback: function (response) {
                     deepEqual(response, config.message, "message received 2");
                     pubnub.unsubscribe({channel_group: chg});
-                    start();
+                    finish();
                 },
                 error: function () {
                     ok(false);
@@ -991,11 +998,11 @@ if message is published on a channel with metadata foo:bar', function(config){
         },
         'error'         : function(r) {
             ok(false, "error occurred in adding channel to group");
-            start();
+            finish();
         }
     });
            
-});
+}, 1);
 
 filter_test('subscribe() should not receive message when subscribed to channel group using filter foo==bar, \
 if message is published on a channel with no metadata', function(config){
@@ -1011,15 +1018,16 @@ if message is published on a channel with no metadata', function(config){
     }, config);
 
     expect(1);
-    stop(1);
 
+    stop(1);
+    
     pubnub.channel_group_add_channel({
         'channel_group' : chg,
         'channels'      : chgc,
         'callback'      : function(r) {
             setTimeout(function(){
                 pubnub.unsubscribe({channel_group: chg});
-                start();
+                finish();
             }, 5000);
 
             _pubnub_subscribe(pubnub, {
@@ -1037,12 +1045,12 @@ if message is published on a channel with no metadata', function(config){
                                 ok(false, 'error occurred in publish');
                             }
                         })
-                    }, 1000);
+                    }, 100);
                 },
                 callback: function (response) {
                     ok(false, "received message 1");
                     pubnub.unsubscribe({channel_group: chg});
-                    //start();
+                    //finish();
                 },
                 error: function (r) {
                     ok(false, JSON.stringify(r));
@@ -1053,11 +1061,11 @@ if message is published on a channel with no metadata', function(config){
         },
         'error'         : function(r) {
             ok(false, "error occurred in adding channel to group");
-            start();
+            finish();
         }
     });
            
-});
+}, 1);
 
 filter_test('subscribe() should not receive message when subscribed to channel group using filter a==b, \
 if message is published on a channel with metadata foo:bar', function(config){
@@ -1073,15 +1081,16 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(1);
-    stop(1);
 
+    stop(1);
+    
     pubnub.channel_group_add_channel({
         'channel_group' : chg,
         'channels'      : chgc,
         'callback'      : function(r) {
             setTimeout(function(){
                 pubnub.unsubscribe({channel_group: chg});
-                start();
+                finish();
             }, 5000);
 
             _pubnub_subscribe(pubnub, {
@@ -1100,12 +1109,12 @@ if message is published on a channel with metadata foo:bar', function(config){
                                 ok(false, 'error occurred in publish');
                             }
                         })
-                    }, 1000);
+                    }, 100);
                 },
                 callback: function (response) {
                     ok(false, "received message");
                     pubnub.unsubscribe({channel_group: chg});
-                    start();
+                    finish();
                 },
                 error: function () {
                     ok(false);
@@ -1116,11 +1125,11 @@ if message is published on a channel with metadata foo:bar', function(config){
         },
         'error'         : function(r) {
             ok(false, "error occurred in adding channel to group");
-            start();
+            finish();
         }
     });
            
-});
+}, 1);
 
 filter_test('subscribe() should not receive message when subscribed to channel group using filter foo==b, \
 if message is published on a channel with metadata foo:bar', function(config){
@@ -1136,16 +1145,16 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(1);
+
     stop(1);
-
-
+    
     pubnub.channel_group_add_channel({
         'channel_group' : chg,
         'channels'      : chgc,
         'callback'      : function(r) {
             setTimeout(function(){
                 pubnub.unsubscribe({channel_group: chg});
-                start();
+                finish();
             }, 5000);
 
 
@@ -1165,12 +1174,12 @@ if message is published on a channel with metadata foo:bar', function(config){
                                 ok(false, 'error occurred in publish');
                             }
                         })
-                    }, 1000);
+                    }, 100);
                 },
                 callback: function (response) {
                     ok(false, "received message");
                     pubnub.unsubscribe({channel_group: chg});
-                    start();
+                    finish();
                 },
                 error: function () {
                     ok(false);
@@ -1181,11 +1190,11 @@ if message is published on a channel with metadata foo:bar', function(config){
         },
         'error'         : function(r) {
             ok(false, "error occurred in adding channel to group");
-            start();
+            finish();
         }
     });
            
-});
+}, 1);
 
 filter_test('subscribe() not should receive message when subscribed to channel group using filter bar==foo, \
 if message is published on a channel with metadata foo:bar', function(config){
@@ -1201,15 +1210,16 @@ if message is published on a channel with metadata foo:bar', function(config){
     }, config);
 
     expect(1);
-    stop(1);
 
+    stop(1);
+    
     pubnub.channel_group_add_channel({
         'channel_group' : chg,
         'channels'      : chgc,
         'callback'      : function(r) {
             setTimeout(function(){
                 pubnub.unsubscribe({channel_group: chg});
-                start();
+                finish();
             }, 5000);
 
 
@@ -1229,12 +1239,12 @@ if message is published on a channel with metadata foo:bar', function(config){
                                 ok(false, 'error occurred in publish');
                             }
                         })
-                    }, 1000);
+                    }, 100);
                 },
                 callback: function (response) {
                     ok(false, "message received");
                     pubnub.unsubscribe({channel_group: chg});
-                    start();
+                    finish();
                 },
                 error: function () {
                     ok(false);
@@ -1245,11 +1255,11 @@ if message is published on a channel with metadata foo:bar', function(config){
         },
         'error'         : function(r) {
             ok(false, "error occurred in adding channel to group");
-            start();
+            finish();
         }
     });
            
-});
+}, 1);
 
 
 filter_test('subscribe() should receive message when subscribed to channel group using filter foo==bar, \
@@ -1266,8 +1276,9 @@ if message is published on a channel with metadata foo:bar (multiple messages in
     }, config);
 
     expect(5);
-    stop(1);
 
+    stop(1);
+    
     pubnub.channel_group_add_channel({
         'channel_group' : chg,
         'channels'      : chgc,
@@ -1289,7 +1300,7 @@ if message is published on a channel with metadata foo:bar (multiple messages in
                                 ok(false, 'error occurred in publish');
                             }
                         });
-                    }, 1000);
+                    }, 100);
                     setTimeout(function(){
                         pubnub.publish({
                             'channel' : chgc,
@@ -1333,7 +1344,7 @@ if message is published on a channel with metadata foo:bar (multiple messages in
                 callback: function (response) {
                     deepEqual(response, config.message, "message received 2");
                     pubnub.unsubscribe({channel_group: chg});
-                    start();
+                    finish();
                 },
                 error: function () {
                     ok(false);
@@ -1345,9 +1356,11 @@ if message is published on a channel with metadata foo:bar (multiple messages in
         },
         'error'         : function(r) {
             ok(false, "error occurred in adding channel to group");
-            start();
+            finish();
         }
     });
 
            
-});
+}, 1);
+
+

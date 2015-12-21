@@ -333,6 +333,7 @@ function PN_API(setup) {
     ,   sendBeacon    = (use_send_beacon)?setup['sendBeacon']:null
     ,   _poll_timer
     ,   _poll_timer2
+    ,   REGION
     ,   FILTER_EXPR;
 
     if (PRESENCE_HB === 2) PRESENCE_HB_INTERVAL = 1;
@@ -1483,6 +1484,8 @@ function PN_API(setup) {
                                 SUB_RESTORE              &&
                                 db['get'](SUBSCRIBE_KEY) || response['t']['t'];
 
+                    REGION = response['t']['r'];
+
                     // Connect
                     each_channel(function(channel){
                         if (channel.connected) return;
@@ -1667,6 +1670,20 @@ function PN_API(setup) {
 
                     timeout( _connect, windowing );
                 }
+
+                var url = [
+                        SUB_ORIGIN, ((V2)?'v2/':'') + 'subscribe',
+                        SUBSCRIBE_KEY, encode(channels),
+                        jsonp
+                    ];
+
+                if (V2) {
+                    data['tt'] = TIMETOKEN;
+                    if (REGION) data['tr'] = REGION;
+                } else {
+                    url.push(TIMETOKEN);
+                }
+
                 SUB_RECEIVER = xdr({
                     timeout  : sub_timeout,
                     callback : jsonp,
@@ -1682,11 +1699,7 @@ function PN_API(setup) {
                         }
                     },
                     data     : _get_url_params(data),
-                    url      : [
-                        SUB_ORIGIN, ((V2)?'v2/':'') + 'subscribe',
-                        SUBSCRIBE_KEY, encode(channels),
-                        jsonp, TIMETOKEN
-                    ],
+                    url      : url,
                     success : (V2)?subscribeSuccessHandlerV2:subscribeSuccessHandlerV1
                 });
             }

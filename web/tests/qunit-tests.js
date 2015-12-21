@@ -1,5 +1,69 @@
 
 
+QUnit.module('GENERIC TESTS', {
+  setupOnce: function () {
+    var pubnub = _pubnub_init({
+        publish_key: test_publish_key,
+        subscribe_key: test_subscribe_key
+    });
+    pubnub.channel_group_list_groups({
+        callback: function (r) {
+            var groups = r.groups;
+            for (var i in groups) {
+                var group = groups[i];
+                pubnub.channel_group_remove_group({
+                    channel_group: group
+                })
+            }
+        }
+    });
+
+    pubnub.channel_group_list_namespaces({
+        callback: function (r) {
+            var namespaces = r.namespaces;
+            for (var i in namespaces) {
+                var namespace = namespaces[i];
+                pubnub.channel_group_remove_namespace({
+                    namespace: namespace
+                })
+            }
+        }
+    });
+  },
+  setup: function () {
+    // runs before each unit test 
+  },
+  teardown: function () {
+    // runs after EACH unit test in this module 
+  },
+  teardownOnce: function () {
+    // runs once after all unit tests finished (including teardown) 
+    pubnub.channel_group_list_groups({
+        callback: function (r) {
+            var groups = r.groups;
+            for (var i in groups) {
+                var group = groups[i];
+                pubnub.channel_group_remove_group({
+                    channel_group: group
+                })
+            }
+        }
+    });
+
+    pubnub.channel_group_list_namespaces({
+        callback: function (r) {
+            var namespaces = r.namespaces;
+            for (var i in namespaces) {
+                var namespace = namespaces[i];
+                pubnub.channel_group_remove_namespace({
+                    namespace: namespace
+                })
+            }
+        }
+    });
+  }
+});
+
 test("uuid() response", function() {
     expect(1);
     stop(1);
