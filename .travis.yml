@@ -1,16 +1,15 @@
 language: node_js
-
 node_js:
-  - "0.12"
-  - "0.10"
-  - "iojs"
-
-
-before_install:
-  npm install -g grunt-cli
-
-install:
-  cd node.js && npm install
-
-script:
-  grunt test
+- '0.12'
+- '0.10'
+- '4'
+- '5'
+- iojs
+before_install: npm install -g grunt-cli
+install: cd node.js && npm install
+script: grunt test
+notifications:
+  flowdock:
+    secure: LvU6vMPcJ2ODZG/dmX4JG/wDLolqTEjPGg34owDn0OGh48hzUfEy7scxGDJyohZYaeR7GBG+UfaK9Zdndk9J58nK8curHL44RVbwA+iRpOCTa48IJ1bKt1zbiDAFkxVRBGC+5UNWbafy3SVVmMecpstHP60ybdWm3jI0ojEIgXM=
+    on_success: always
+    on_failure: always

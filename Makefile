@@ -16,4 +16,7 @@ clean:
 test:
 	for dir in $(SUBDIRS); do \
 		$(MAKE) test -C $$dir; \
-	done 
+	done
+
+	./node_modules/.bin/grunt test
+

@@ -1,125 +1,141 @@
-var PUBNUB = require('../pubnub.js'),
-    assert = require("assert"),
-    nock   = require("nock"),
-    channel = "test_javascript_ssl",
-    origin = 'blah.pubnub.com',
-    uuid = "me",
-    message = "hello";
+path = require("path");
+assert = require("assert");
+PUBNUB = require('../pubnub.js');
+sepia = require('sepia');
+
+sepia.fixtureDir(path.join(__dirname, 'sepia-fixtures', "ssl_test"));
+
+
+function getRandom(max) {
+  return Math.floor((Math.random() * (max || 1000000000) + 1))
+}
+
+function getTestUUID(){
+  if (process.env.HTTP_BLOCKED){
+    return "dd6af454-fa7a-47be-a800-1b9b050f5d94"
+  } else {
+    return require('node-uuid').v4()
+  }
+}
+
+function getChannelPostFix() {
+  if (process.env.HTTP_BLOCKED){
+    return 10
+  } else {
+    return getRandom()
+  }
+}
+
+
+channel = "test_javascript_ssl";
+origin = 'blah.pubnub.com';
+uuid = getTestUUID();
+message = "hello";
+publishKey = 'demo';
+subscribeKey = 'demo';
 
 describe("When SSL mode", function () {
-    after(function () {
-        nock.enableNetConnect();
-    });
 
-    describe("is enabled", function () {
-        it("should be able to successfully subscribe to the channel and publish message to it ", function (done) {
-            this.timeout(5000);
-            nock.enableNetConnect();
+  describe("is enabled", function () {
 
-            var pubnub = PUBNUB.init({
-                publish_key     : 'demo',
-                subscribe_key   : 'demo',
-                ssl             : true,
-                origin          : 'pubsub.pubnub.com'
-            });
+      it("should be able to successfully subscribe to the channel and publish message to it on port 443", function (done) {
 
-            subscribeAndPublish(pubnub, channel + "_enabled_" + get_random(), done);
+        var pubnub = PUBNUB.init({
+          publish_key: publishKey,
+          subscribe_key: subscribeKey,
+          ssl: true,
+          origin: origin,
+          uuid: uuid
         });
 
-        it("should send requests via HTTPS to 443 port", function (done) {
-            nock.disableNetConnect();
-
-            var pubnub = PUBNUB.init({
-                publish_key     : 'demo',
-                subscribe_key   : 'demo',
-                ssl             : true,
-                origin          : origin,
-                uuid            : uuid
-            });
-
-            var path = "/publish/demo/demo/0/" + channel + "/0/" + encodeURI('"' + message + '"') +
-                "?uuid=" + uuid + "&pnsdk=PubNub-JS-Nodejs%2F3.7.12";
-
-            nock("https://" + origin + ":443")
-                .get(path)
-                .reply(200, [[message], "14264384975359568", channel]);
-
-            pubnub.publish({
-                channel: channel,
-                message: message,
-                callback: function () {
-                    done();
-                },
-                error: function () {
-                    done(new Error("Error callback triggered"));
-                }
-            });
+        subscribeAndPublish(pubnub, channel + "_enabled_" + getChannelPostFix(), function(err){
+          pubnub.shutdown();
+          done(err);
         });
-    });
+      });
 
-    describe("is disabled", function () {
-        it("should be able to successfully subscribe to the channel and publish message to it ", function (done) {
-            this.timeout(5000);
-            nock.enableNetConnect();
-
-            var pubnub = PUBNUB.init({
-                publish_key     : 'demo',
-                subscribe_key   : 'demo',
-                ssl             : false,
-                origin          : 'pubsub.pubnub.com'
-            });
-
-            subscribeAndPublish(pubnub, channel + "_disabled_" + get_random(), done);
+      it("should send requests via HTTPS to 443 port", function (done) {
+        var pubnub = PUBNUB.init({
+          publish_key: publishKey,
+          subscribe_key: subscribeKey,
+          ssl: true,
+          origin: origin,
+          uuid: uuid
         });
 
-        it("should send requests via HTTP to 80 port", function (done) {
-            nock.disableNetConnect();
-
-            var pubnub = PUBNUB.init({
-                publish_key     : 'demo',
-                subscribe_key   : 'demo',
-                origin          : origin,
-                uuid            : uuid
-            });
-
-            var path = "/publish/demo/demo/0/" + channel + "/0/" + encodeURI('"' + message + '"') +
-                "?uuid=" + uuid + "&pnsdk=PubNub-JS-Nodejs%2F3.7.12";
-
-            nock("http://" + origin + ":80")
-                .get(path)
-                .reply(200, [[message], "14264384975359568", channel]);
-
-            pubnub.publish({
-                channel: channel,
-                message: message,
-                callback: function () {
-                    done();
-                },
-                error: function () {
-                    done(new Error("Error callback triggered"));
-                }
-            });
+        pubnub.publish({
+          channel: channel,
+          message: message,
+          callback: function () {
+            pubnub.shutdown();
+            done();
+          },
+          error: function (err) {
+            pubnub.shutdown();
+            done(new Error("Error callback triggered"));
+          }
         });
-    });
+      });
+  });
+
+  describe("is disabled", function () {
+      it("should be able to successfully subscribe to the channel and publish message to it on port 80", function (done) {
+        var pubnub = PUBNUB.init({
+          publish_key: publishKey,
+          subscribe_key: subscribeKey,
+          ssl: false,
+          origin: origin,
+          uuid: uuid
+        });
+
+        subscribeAndPublish(pubnub, channel + "_disabled_" + getChannelPostFix(), function (err) {
+          pubnub.shutdown();
+          done(err);
+        });
+      });
+
+      it("should send requests via HTTP to 80 port", function (done) {
+        var pubnub = PUBNUB.init({
+          publish_key: publishKey,
+          subscribe_key: subscribeKey,
+          ssl: false,
+          origin: origin,
+          uuid: uuid
+        });
+
+        pubnub.publish({
+          channel: channel,
+          message: message,
+          callback: function () {
+            pubnub.shutdown();
+            done();
+          },
+          error: function () {
+            pubnub.shutdown();
+            done(new Error("Error callback triggered"));
+          }
+        });
+      });
+  });
+
 });
 
 function subscribeAndPublish(pubnub, channel, done) {
-    pubnub.subscribe({
+  pubnub.subscribe({
+    channel: channel,
+    connect: function () {
+      pubnub.publish({
         channel: channel,
-        connect: function () {
-            pubnub.publish({
-                channel: channel,
-                message: message
-            })
-        },
-        callback: function (msg, envelope, ch) {
-            assert.equal(message, msg);
-            assert.equal(channel, ch);
-            done();
-        }
-    });
-}
-
-function get_random(max) {
-    return Math.floor((Math.random() * (max || 1000000000) + 1))
+        message: message
+      })
+    },
+    callback: function (msg, envelope, ch) {
+      assert.equal(message, msg);
+      assert.equal(channel, ch);
+      done();
+    },
+    error: function (err) {
+      done(new Error("Error callback triggered"));
+    }
+  });
 }
