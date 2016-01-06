@@ -20,8 +20,4 @@ $(PUBNUB_JS): $(PUBNUB_COMMON_JS) $(PUBNUB_NODE_JS)
 clean:
 	rm -f $(OUTPUT_FILES) 
 
-.PHONY: test
-test:
-	mocha -R spec tests/test.js
-
 include ../Makefile.post

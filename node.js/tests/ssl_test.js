@@ -26,7 +26,7 @@ describe("When SSL mode", function () {
             subscribeAndPublish(pubnub, channel + "_enabled_" + get_random(), done);
         });
 
-        it("should send requests via HTTPS to 443 port", function (done) {
+        it.skip("should send requests via HTTPS to 443 port", function (done) {
             nock.disableNetConnect();
 
             var pubnub = PUBNUB.init({
@@ -72,7 +72,7 @@ describe("When SSL mode", function () {
             subscribeAndPublish(pubnub, channel + "_disabled_" + get_random(), done);
         });
 
-        it("should send requests via HTTP to 80 port", function (done) {
+        it.skip("should send requests via HTTP to 80 port", function (done) {
             nock.disableNetConnect();
 
             var pubnub = PUBNUB.init({
