@@ -25,6 +25,6 @@ module.exports = function (grunt) {
 
     grunt.registerTask('test', ["test:mocha"]);
     grunt.registerTask('test:mocha', ['mochaTest']);
-    // TODO: refactor unit testing
+    // TODO: refactor unit testing 
     // grunt.registerTask('test:unit', ['nodeunit']);
 };

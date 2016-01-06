@@ -32,7 +32,7 @@ function get_random(max) {
     return Math.floor((Math.random() * (max || 1000000000) + 1))
 }
 
-var channel = 'javascript-test-channel1-' + get_random + "-" + Date.now();
+var channel = 'javascript-test-channel-' + get_random() + "-" + Date.now();
 var count = 0;
 
 var message_string = "Hi from Javascript";
@@ -474,7 +474,7 @@ describe('Pubnub', function () {
             var channel = 'channel' + Date.now();
             var auth_key = 'abcd';
 
-            this.timeout(3000);
+            //this.timeout(3000);
 
             pubnub_pam.revoke({
                 auth_key: auth_key,
@@ -914,6 +914,10 @@ describe('Pubnub', function () {
                                                 assert.deepEqual(messages, response[0]);
                                                 done();
                                             },
+                                            err: function(response) {
+                                                assert.ok(false);
+                                                done()
+                                            },
                                             count: 3
                                         });
                                     }, 5000);
@@ -948,6 +952,10 @@ describe('Pubnub', function () {
                                                 assert.notDeepEqual(messages, response[0]);
                                                 done();
                                             },
+                                            err: function(response) {
+                                                assert.ok(false);
+                                                done()
+                                            },
                                             count: 3
                                         });
                                     }, 5000);
@@ -964,7 +972,7 @@ describe('Pubnub', function () {
         var history_channel = channel + '-history';
 
         before(function (done) {
-            this.timeout(80000);
+            //this.timeout(80000);
 
             pubnub.publish({
                 channel: history_channel,
@@ -1015,7 +1023,7 @@ describe('Pubnub', function () {
         });
 
         it('should return 6 messages when 6 messages were published on channel', function (done) {
-            this.timeout(40000);
+            //this.timeout(40000);
 
             setTimeout(function () {
                 pubnub.history({
@@ -1031,7 +1039,7 @@ describe('Pubnub', function () {
         });
 
         it('should return 1 message when 6 messages were published on channel and count is 1', function (done) {
-            this.timeout(40000);
+            //this.timeout(40000);
 
             setTimeout(function () {
                 pubnub.history({
@@ -1047,7 +1055,7 @@ describe('Pubnub', function () {
         });
 
         it('should return 1 message from reverse when 6 messages were published on channel and count is 1', function (done) {
-            this.timeout(40000);
+            //this.timeout(40000);
 
             setTimeout(function () {
                 pubnub.history({
@@ -1064,7 +1072,7 @@ describe('Pubnub', function () {
         });
 
         it('should pass on plain text for messages which could not be decrypted when encryption is enabled', function (done) {
-            this.timeout(40000);
+            //this.timeout(40000);
 
             setTimeout(function () {
                 pubnub_enc.history({
@@ -1085,7 +1093,7 @@ describe('Pubnub', function () {
         var history_channel = channel + '-history-enc';
 
         before(function (done) {
-            this.timeout(40000);
+            // this.timeout(40000);
             var x;
             pubnub_enc.publish({
                 channel: history_channel,
@@ -1105,7 +1113,7 @@ describe('Pubnub', function () {
         });
 
         it('should return 2 messages when 2 messages were published on channel', function (done) {
-            this.timeout(40000);
+            // this.timeout(40000);
 
             setTimeout(function () {
                 pubnub_enc.history({
@@ -1121,7 +1129,7 @@ describe('Pubnub', function () {
         });
 
         it('should return 1 message when 2 messages were published on channel and count is 1', function (done) {
-            this.timeout(40000);
+            // this.timeout(40000);
 
             setTimeout(function () {
                 pubnub_enc.history({
@@ -1137,7 +1145,7 @@ describe('Pubnub', function () {
         });
 
         it('should return 1 message from reverse when 2 messages were published on channel and count is 1', function (done) {
-            this.timeout(40000);
+            // this.timeout(40000);
 
             setTimeout(function () {
                 pubnub_enc.history({
@@ -1184,7 +1192,7 @@ describe('Pubnub', function () {
             build_u: true
         });
 
-        this.timeout(15000);
+        // this.timeout(15000);
 
         for (var i = 0; i < get_random(10); i++) {
             pubnub._add_param('a-' + get_random(1000), Date.now());
@@ -1717,7 +1725,7 @@ describe('Pubnub', function () {
             build_u: true
         });
 
-        this.timeout(80000);
+        // this.timeout(80000);
 
         it('should return channel x in result for uuid y, when uuid y subscribed to channel x', function (done) {
             var ch = channel + '-' + 'where-now';
@@ -1794,7 +1802,7 @@ describe('Pubnub', function () {
             build_u: true
         });
 
-        this.timeout(80000);
+        // this.timeout(80000);
 
         it('should be able to set state for uuid', function (done) {
             var ch = channel + '-' + 'setstate',
@@ -2401,7 +2409,7 @@ describe('Pubnub', function () {
         });
 
         it('should show occupancy 1 user if 1 user is subscribed to channel', function (done) {
-            this.timeout(80000);
+            // this.timeout(80000);
 
             var ch = channel + '-' + 'here-now-' + get_random();
             pubnub.subscribe({
