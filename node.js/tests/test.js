@@ -28,7 +28,11 @@ var pubnub_enc = PUBNUB({
     build_u: true
 });
 
-var channel = 'javascript-test-channel-' + Date.now();
+function get_random(max) {
+    return Math.floor((Math.random() * (max || 1000000000) + 1))
+}
+
+var channel = 'javascript-test-channel1-' + get_random + "-" + Date.now();
 var count = 0;
 
 var message_string = "Hi from Javascript";
@@ -52,10 +56,6 @@ function in_list_deep(list, str) {
         if (_.isEqual(list[x], str)) return true;
     }
     return false;
-}
-
-function get_random(max) {
-    return Math.floor((Math.random() * (max || 1000000000) + 1))
 }
 
 namespaces = [];
