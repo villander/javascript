@@ -12,7 +12,7 @@
   ],
   "bin": {},
   "scripts": {
-    "test": "grunt test --force"
+    "test": "./node_modules/.bin/grunt test --force"
   },
   "main": "./node.js/pubnub.js",
   "browser": "./modern/pubnub.js",
