@@ -42,18 +42,20 @@ describe("When SSL mode", function () {
 
   describe("is enabled", function () {
 
-      it("should be able to successfully subscribe to the channel and publish message to it on port 443", function (done) {
-
-        var pubnub = PUBNUB.init({
+      before(function(){
+        itFixtures.pubnub = PUBNUB.init({
           publish_key: fileFixtures.publishKey,
           subscribe_key: fileFixtures.subscribeKey,
           ssl: true,
           origin: fileFixtures.origin,
           uuid: fileFixtures.uuid
         });
+      });
 
-        subscribeAndPublish(pubnub, fileFixtures.channel + "_enabled_" + getChannelPostFix(), fileFixtures.message, function(err){
-          pubnub.shutdown();
+      it("should be able to successfully subscribe to the channel and publish message to it on port 443", function (done) {
+
+        subscribeAndPublish(itFixtures.pubnub, fileFixtures.channel + "_enabled_" + getChannelPostFix(), fileFixtures.message, function(err){
+          itFixtures.pubnub.shutdown();
           done(err);
         });
       });
@@ -67,15 +69,15 @@ describe("When SSL mode", function () {
           uuid: fileFixtures.uuid
         });
 
-        pubnub.publish({
+        itFixtures.pubnub.publish({
           channel: fileFixtures.channel,
           message: fileFixtures.message,
           callback: function () {
-            pubnub.shutdown();
+            itFixtures.pubnub.shutdown();
             done();
           },
           error: function (err) {
-            pubnub.shutdown();
+            itFixtures.pubnub.shutdown();
             done(new Error("Error callback triggered"));
           }
         });
@@ -83,39 +85,34 @@ describe("When SSL mode", function () {
   });
 
   describe("is disabled", function () {
-      it("should be able to successfully subscribe to the channel and publish message to it on port 80", function (done) {
-        var pubnub = PUBNUB.init({
+
+      before(function(){
+        itFixtures.pubnub = PUBNUB.init({
           publish_key: fileFixtures.publishKey,
           subscribe_key: fileFixtures.subscribeKey,
           ssl: false,
           origin: fileFixtures.origin,
           uuid: fileFixtures.uuid
         });
+      })
 
-        subscribeAndPublish(pubnub, fileFixtures.channel + "_disabled_" + getChannelPostFix(), fileFixtures.message, function (err) {
-          pubnub.shutdown();
+      it("should be able to successfully subscribe to the channel and publish message to it on port 80", function (done) {
+        subscribeAndPublish(itFixtures.pubnub, fileFixtures.channel + "_disabled_" + getChannelPostFix(), fileFixtures.message, function (err) {
+          itFixtures.pubnub.shutdown();
           done(err);
         });
       });
 
       it("should send requests via HTTP to 80 port", function (done) {
-        var pubnub = PUBNUB.init({
-          publish_key: fileFixtures.publishKey,
-          subscribe_key: fileFixtures.subscribeKey,
-          ssl: false,
-          origin: fileFixtures.origin,
-          uuid: fileFixtures.uuid
-        });
-
-        pubnub.publish({
+        itFixtures.pubnub.publish({
           channel: fileFixtures.channel,
           message: fileFixtures.message,
           callback: function () {
-            pubnub.shutdown();
+            itFixtures.pubnub.shutdown();
             done();
           },
           error: function () {
-            pubnub.shutdown();
+            itFixtures.pubnub.shutdown();
             done(new Error("Error callback triggered"));
           }
         });
