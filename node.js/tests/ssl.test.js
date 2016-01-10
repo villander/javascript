@@ -3,28 +3,9 @@ assert = require("assert");
 PUBNUB = require('../pubnub.js');
 sepia = require('sepia');
 _ = require('underscore');
+testUtils = require('./utils');
 
 sepia.fixtureDir(path.join(__dirname, 'sepia-fixtures', "ssl_test"));
-
-function getRandom(max) {
-  return Math.floor((Math.random() * (max || 1000000000) + 1))
-}
-
-function getTestUUID(){
-  if ( _.contains(["playback", "cache"], process.env.VCR_MODE) ){
-    return "dd6af454-fa7a-47be-a800-1b9b050f5d94"
-  } else {
-    return require('node-uuid').v4()
-  }
-}
-
-function getChannelPostFix() {
-  if ( _.contains(["playback", "cache"], process.env.VCR_MODE) ){
-    return 10
-  } else {
-    return getRandom()
-  }
-}
 
 describe("When SSL mode", function () {
   var fileFixtures = {};
@@ -33,7 +14,7 @@ describe("When SSL mode", function () {
   before(function () {
     fileFixtures.channel = "test_javascript_ssl";
     fileFixtures.origin = 'blah.pubnub.com';
-    fileFixtures.uuid = getTestUUID();
+    fileFixtures.uuid = testUtils.getTestUUID();
     fileFixtures.message = "hello";
     fileFixtures.publishKey = 'ds';
     fileFixtures.subscribeKey = 'ds';
@@ -54,7 +35,7 @@ describe("When SSL mode", function () {
 
       it("should be able to successfully subscribe to the channel and publish message to it on port 443", function (done) {
 
-        subscribeAndPublish(itFixtures.pubnub, fileFixtures.channel + "_enabled_" + getChannelPostFix(), fileFixtures.message, function(err){
+        subscribeAndPublish(itFixtures.pubnub, fileFixtures.channel + "_enabled_" + testUtils.getChannelPostFix(), fileFixtures.message, function(err){
           itFixtures.pubnub.shutdown();
           done(err);
         });
@@ -97,7 +78,7 @@ describe("When SSL mode", function () {
       })
 
       it("should be able to successfully subscribe to the channel and publish message to it on port 80", function (done) {
-        subscribeAndPublish(itFixtures.pubnub, fileFixtures.channel + "_disabled_" + getChannelPostFix(), fileFixtures.message, function (err) {
+        subscribeAndPublish(itFixtures.pubnub, fileFixtures.channel + "_disabled_" + testUtils.getChannelPostFix(), fileFixtures.message, function (err) {
           itFixtures.pubnub.shutdown();
           done(err);
         });

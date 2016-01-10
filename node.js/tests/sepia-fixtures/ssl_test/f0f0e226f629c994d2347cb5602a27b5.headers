@@ -1,0 +1,18 @@
+{
+  "statusCode": 200,
+  "headers": {
+    "date": "Sun, 10 Jan 2016 08:18:53 GMT",
+    "content-type": "text/javascript; charset=\"UTF-8\"",
+    "content-length": "19",
+    "connection": "keep-alive",
+    "cache-control": "no-cache",
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET",
+    "proxy-connection": "keep-alive"
+  },
+  "url": "http://ps13.pubnub.com:80/time/0?uuid=1452413933727&pnsdk=PubNub-JS-Nodejs%2F3.7.18",
+  "time": 59,
+  "request": {
+    "method": "GET"
+  }
+}
