@@ -2,12 +2,10 @@ module.exports = function (grunt) {
     grunt.initConfig({
         env: {
             test_lockdown: {
-                "VCR_MODE": "playback",
-                "HTTP_BLOCKED": true
+                "VCR_MODE": "playback"
             },
             test_record: {
-                "VCR_MODE": "cache",
-                "HTTP_BLOCKED": true
+                "VCR_MODE": "cache"
             }
         },
         pkg: grunt.file.readJSON('package.json'),
@@ -15,11 +13,10 @@ module.exports = function (grunt) {
             test: {
                 options: {
                     reporter: "spec",
-                    require: 'node.js/tests/tests-include.js',
                     quiet: false
                 },
                 // NOTICE: ignore test2.js test due it's
-                src: ['node.js/tests/ssl_test.js']
+                src: ['node.js/tests/**/*.test.js']
             },
             unit: 'karma.conf.js'
         },
