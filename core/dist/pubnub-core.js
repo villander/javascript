@@ -2125,7 +2125,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    'PNmessage': PNmessage,
 	    DEF_TIMEOUT: DEF_TIMEOUT,
 	    'timeout': timeout,
-	    'build_url': build_url
+	    'build_url': build_url,
+	    'each': each
 	};
 
 
@@ -2177,7 +2178,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		"scripts": {
 			"test": "grunt test --force"
 		},
-		"main": "./node.js/pubnub.js",
+		"main": "./node.js/index.js",
 		"browser": "./modern/pubnub.js",
 		"repository": {
 			"type": "git",
@@ -2195,7 +2196,8 @@ return /******/ (function(modules) { // webpackBootstrap
 			"messaging"
 		],
 		"dependencies": {
-			"agentkeepalive": "~0.2"
+			"agentkeepalive": "~0.2",
+			"crypto-js": "^3.1.6"
 		},
 		"noAnalyze": false,
 		"devDependencies": {
@@ -2208,6 +2210,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			"grunt-cli": "^0.1.13",
 			"grunt-contrib-clean": "^0.6.0",
 			"grunt-contrib-nodeunit": "^0.4.1",
+			"grunt-contrib-uglify": "^0.11.0",
 			"grunt-eslint": "^17.3.1",
 			"grunt-mocha-test": "^0.12.7",
 			"grunt-shell": "^1.1.2",

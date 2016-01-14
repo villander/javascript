@@ -2069,5 +2069,6 @@ module.exports = {
     'PNmessage': PNmessage,
     DEF_TIMEOUT: DEF_TIMEOUT,
     'timeout': timeout,
-    'build_url': build_url
+    'build_url': build_url,
+    'each': each
 };

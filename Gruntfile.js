@@ -4,11 +4,18 @@ module.exports = function (grunt) {
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
     clean: {
-      coreDist: ["core/dist"]
+      coreDist: ["core/dist", "modern/dist"]
     },
     shell: {
       buildLegacy: {
         command: 'make clean && make'
+      }
+    },
+    uglify: {
+      modernWeb: {
+        files: {
+          'modern/dist/pubnub.min.js': ['modern/dist/pubnub.js']
+        }
       }
     },
     webpack: {
@@ -26,6 +33,21 @@ module.exports = function (grunt) {
           library: "PubNubCore",
           libraryTarget: "umd"
         }
+      },
+      modernWeb: {
+        // webpack options
+        entry: "./modern/lib/modern.js",
+        module: {
+          loaders: [
+            { test: /\.json/, loader: "json" }
+          ]
+        },
+        output: {
+          path: "./modern/dist",
+          filename: "pubnub.js",
+          library: "PUBNUB",
+          libraryTarget: "umd"
+        }
       }
     },
     browserify: {
@@ -38,7 +60,7 @@ module.exports = function (grunt) {
       }
     },
     eslint: {
-      target: ['node.js/*.js']
+      target: ['node.js/*.js', 'modern/lib/**.js', 'parse/*.js', 'core/vendor/crypto/crypto-obj.js']
     },
     mochaTest: {
       test: {
@@ -62,9 +84,11 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-contrib-nodeunit');
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-webpack');
+  grunt.loadNpmTasks('grunt-contrib-uglify');
 
   // tasks to build core
-  grunt.registerTask('build', ['clean:coreDist', 'webpack:core']);
+  grunt.registerTask("minify", ["uglify:modernWeb"]);
+  grunt.registerTask('build', ['clean:coreDist', 'webpack:core', 'webpack:modernWeb', "minify"]);
   grunt.registerTask('build_legacy', ['build', 'shell:buildLegacy']);
 
   grunt.registerTask('test', ["eslint", "test:mocha", "test:unit"]);

@@ -1,4 +1,6 @@
-function crypto_obj() {
+var CryptoJS = require("crypto-js");
+
+module.exports = function crypto_obj() {
 
     function SHA256(s) {
         return CryptoJS['SHA256'](s)['toString'](CryptoJS['enc']['Hex']);
