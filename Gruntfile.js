@@ -15,11 +15,16 @@ module.exports = function (grunt) {
       core: {
         // webpack options
         entry: "./core/lib/pubnub-common.js",
+        module: {
+          loaders: [
+            { test: /\.json/, loader: "json" }
+          ]
+        },
         output: {
           path: "./core/dist",
           filename: "pubnub-core.js",
           library: "PubNubCore",
-          libraryTarget: "var"
+          libraryTarget: "umd"
         }
       }
     },
@@ -28,9 +33,12 @@ module.exports = function (grunt) {
         src: ['core/lib/**/*.js'],
         dest: 'core/dist/pubnub-core.js',
         options: {
-          external: ['jquery', 'momentWrapper'],
+          external: ['jquery', 'momentWrapper']
         }
       }
+    },
+    eslint: {
+      target: ['node.js/*.js']
     },
     mochaTest: {
       test: {
@@ -40,7 +48,7 @@ module.exports = function (grunt) {
           quiet: false
         },
         // NOTICE: ignore test2.js test due it's
-        src: ['tests/ssl_test.js', 'tests/test.js']
+        src: ['node.js/**/*.test.js']
       },
       unit: 'karma.conf.js'
     },
@@ -56,9 +64,10 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-webpack');
 
   // tasks to build core
-  grunt.registerTask('build', ['clean:coreDist', 'webpack:core', 'shell:buildLegacy']);
+  grunt.registerTask('build', ['clean:coreDist', 'webpack:core']);
+  grunt.registerTask('build_legacy', ['build', 'shell:buildLegacy']);
 
-  grunt.registerTask('test', ["test:mocha", "test:unit"]);
+  grunt.registerTask('test', ["eslint", "test:mocha", "test:unit"]);
   grunt.registerTask('test:mocha', 'mochaTest');
   grunt.registerTask('test:unit', 'nodeunit');
 };

@@ -1,0 +1,4 @@
+extends: airbnb/legacy # TODO: add es6 compiler and move away from legacy.
+plugins:
+  - react
+

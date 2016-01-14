@@ -1,6 +1,5 @@
-
-
 utils = require("./utils.js");
+packageInformation = require("../../package.json");
 
 var NOW             = 1
 ,   READY           = false
@@ -15,7 +14,7 @@ var NOW             = 1
 ,   PARAMSBIT       = '&'
 ,   PRESENCE_HB_THRESHOLD = 5
 ,   PRESENCE_HB_DEFAULT  = 30
-,   SDK_VER         = VERSION
+,   SDK_VER         = packageInformation.version
 ,   REPL            = /{([\w\-]+)}/g;
 
 /**
@@ -262,7 +261,7 @@ function PNmessage(args) {
     return msg;
 }
 
-module.exports = function PN_API(setup) {
+function PN_API(setup) {
     var SUB_WINDOWING =  +setup['windowing']   || DEF_WINDOWING
     ,   SUB_TIMEOUT   = (+setup['timeout']     || DEF_SUB_TIMEOUT) * SECOND
     ,   KEEPALIVE     = (+setup['keepalive']   || DEF_KEEPALIVE)   * SECOND
@@ -2062,3 +2061,13 @@ module.exports = function PN_API(setup) {
 
     return SELF;
 }
+
+//export EVERYTHING! on this file
+module.exports = {
+    'PN_API': PN_API,
+    'unique': unique,
+    'PNmessage': PNmessage,
+    DEF_TIMEOUT: DEF_TIMEOUT,
+    'timeout': timeout,
+    'build_url': build_url
+};

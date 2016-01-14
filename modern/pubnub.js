@@ -30,8 +30,17 @@ THE SOFTWARE.
 --------------------------------------------------------------------------- */
 (function(){
 
-var PubNubCore =
-/******/ (function(modules) { // webpackBootstrap
+(function webpackUniversalModuleDefinition(root, factory) {
+	if(typeof exports === 'object' && typeof module === 'object')
+		module.exports = factory();
+	else if(typeof define === 'function' && define.amd)
+		define([], factory);
+	else if(typeof exports === 'object')
+		exports["PubNubCore"] = factory();
+	else
+		root["PubNubCore"] = factory();
+})(this, function() {
+return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
 
@@ -77,9 +86,8 @@ var PubNubCore =
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
-	
-
 	utils = __webpack_require__(1);
+	packageInformation = __webpack_require__(2);
 
 	var NOW             = 1
 	,   READY           = false
@@ -94,7 +102,7 @@ var PubNubCore =
 	,   PARAMSBIT       = '&'
 	,   PRESENCE_HB_THRESHOLD = 5
 	,   PRESENCE_HB_DEFAULT  = 30
-	,   SDK_VER         = '3.7.19'
+	,   SDK_VER         = packageInformation.version
 	,   REPL            = /{([\w\-]+)}/g;
 
 	/**
@@ -341,7 +349,7 @@ var PubNubCore =
 	    return msg;
 	}
 
-	module.exports = function PN_API(setup) {
+	function PN_API(setup) {
 	    var SUB_WINDOWING =  +setup['windowing']   || DEF_WINDOWING
 	    ,   SUB_TIMEOUT   = (+setup['timeout']     || DEF_SUB_TIMEOUT) * SECOND
 	    ,   KEEPALIVE     = (+setup['keepalive']   || DEF_KEEPALIVE)   * SECOND
@@ -2142,6 +2150,9 @@ var PubNubCore =
 	    return SELF;
 	}
 
+	//export EVERYTHING! on this file
+	module.exports = {'PN_API': PN_API, 'unique': unique, 'PNmessage': PNmessage};
+
 
 /***/ },
 /* 1 */
@@ -2171,8 +2182,86 @@ var PubNubCore =
 
 	};
 
+/***/ },
+/* 2 */
+/***/ function(module, exports) {
+
+	module.exports = {
+		"name": "pubnub",
+		"preferGlobal": false,
+		"version": "3.7.19",
+		"author": "PubNub <stephen@pubnub.com>",
+		"description": "Publish & Subscribe Real-time Messaging with PubNub",
+		"contributors": [
+			{
+				"name": "Stephen Blum",
+				"email": "stephen@pubnub.com"
+			}
+		],
+		"bin": {},
+		"scripts": {
+			"test": "grunt test --force"
+		},
+		"main": "./node.js/pubnub.js",
+		"browser": "./modern/pubnub.js",
+		"repository": {
+			"type": "git",
+			"url": "git://github.com/pubnub/javascript.git"
+		},
+		"keywords": [
+			"cloud",
+			"publish",
+			"subscribe",
+			"websockets",
+			"comet",
+			"bosh",
+			"xmpp",
+			"real-time",
+			"messaging"
+		],
+		"dependencies": {
+			"agentkeepalive": "~0.2"
+		},
+		"noAnalyze": false,
+		"devDependencies": {
+			"browserify": "^13.0.0",
+			"grunt": "^0.4.5",
+			"grunt-browserify": "^4.0.1",
+			"grunt-cli": "^0.1.13",
+			"grunt-contrib-clean": "^0.6.0",
+			"grunt-contrib-nodeunit": "^0.4.1",
+			"grunt-mocha-test": "^0.12.7",
+			"grunt-shell": "^1.1.2",
+			"grunt-webpack": "^1.0.11",
+			"json-loader": "^0.5.4",
+			"load-grunt-tasks": "^3.4.0",
+			"mocha": "^2.1.0",
+			"nock": "^1.1.0",
+			"nodeunit": "^0.9.0",
+			"sinon": "^1.17.2",
+			"underscore": "^1.7.0",
+			"webpack": "^1.12.11",
+			"webpack-dev-server": "^1.14.1"
+		},
+		"bundleDependencies": [],
+		"license": "MIT",
+		"engine": {
+			"node": ">=0.2"
+		},
+		"files": [
+			"node.js",
+			"modern/pubnub.js",
+			"CHANGELOG",
+			"FUTURE.md",
+			"LICENSE",
+			"README.md"
+		]
+	};
+
 /***/ }
-/******/ ]);function crypto_obj() {
+/******/ ])
+});
+;function crypto_obj() {
 
     function SHA256(s) {
         return CryptoJS['SHA256'](s)['toString'](CryptoJS['enc']['Hex']);

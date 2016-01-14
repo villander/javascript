@@ -1,4 +1,4 @@
-pubnub = require('../../pubnub.js');
+pubnub = require('../../index.js');
 sinon = require("sinon");
 assert = require('assert');
 
