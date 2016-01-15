@@ -364,6 +364,8 @@ var CREATE_PUBNUB = function (setup) {
 
 // we are exposing pubNubCore
 
+var moose = 10;
+
 CREATE_PUBNUB.init = CREATE_PUBNUB;
 CREATE_PUBNUB.unique = pubNubCore.unique;
 CREATE_PUBNUB.secure = CREATE_PUBNUB;

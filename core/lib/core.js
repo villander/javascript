@@ -24,6 +24,25 @@ function unique() { return'x'+ ++NOW+''+(+new Date) }
 function rnow()   { return+new Date }
 
 /**
+ * NEXTORIGIN
+ * ==========
+ * var next_origin = nextorigin();
+ */
+var nextorigin = (function() {
+    var max = 20
+      ,   ori = Math.floor(Math.random() * max);
+    return function( origin, failover ) {
+        return origin.indexOf('pubsub.') > 0
+          && origin.replace(
+            'pubsub', 'ps' + (
+              failover ? generate_uuid().split('-')[0] :
+                (++ori < max? ori : ori=1)
+            ) ) || origin;
+    }
+})();
+
+
+/**
  * Build Url
  * =======
  *
@@ -274,8 +293,8 @@ function PN_API(setup) {
     ,   hmac_SHA256   = setup['hmac_SHA256']
     ,   SSL           = setup['ssl']            ? 's' : ''
     ,   ORIGIN        = 'http'+SSL+'://'+(setup['origin']||'pubsub.pubnub.com')
-    ,   STD_ORIGIN    = utils.nextorigin(ORIGIN)
-    ,   SUB_ORIGIN    = utils.nextorigin(ORIGIN)
+    ,   STD_ORIGIN    = nextorigin(ORIGIN)
+    ,   SUB_ORIGIN    = nextorigin(ORIGIN)
     ,   CONNECT       = function(){}
     ,   PUB_QUEUE     = []
     ,   CLOAK         = true
@@ -549,7 +568,7 @@ function PN_API(setup) {
     var SELF = {
         'LEAVE' : function( channel, blocking, auth_key, callback, error ) {
             var data   = { 'uuid' : UUID, 'auth' : auth_key || AUTH_KEY }
-            ,   origin = utils.nextorigin(ORIGIN)
+            ,   origin = nextorigin(ORIGIN)
             ,   callback = callback || function(){}
             ,   err      = error    || function(){}
             ,   url
@@ -605,7 +624,7 @@ function PN_API(setup) {
         'LEAVE_GROUP' : function( channel_group, blocking, auth_key, callback, error ) {
 
             var data   = { 'uuid' : UUID, 'auth' : auth_key || AUTH_KEY }
-            ,   origin = utils.nextorigin(ORIGIN)
+            ,   origin = nextorigin(ORIGIN)
             ,   url
             ,   params
             ,   callback = callback || function(){}
@@ -1315,8 +1334,8 @@ function PN_API(setup) {
                 }
                 else {
                     // New Origin on Failed Connection
-                    STD_ORIGIN = utils.nextorigin( ORIGIN, 1 );
-                    SUB_ORIGIN = utils.nextorigin( ORIGIN, 1 );
+                    STD_ORIGIN = nextorigin( ORIGIN, 1 );
+                    SUB_ORIGIN = nextorigin( ORIGIN, 1 );
 
                     // Re-test Connection
                     timeout( function() {
@@ -2067,8 +2086,9 @@ module.exports = {
     'PN_API': PN_API,
     'unique': unique,
     'PNmessage': PNmessage,
-    DEF_TIMEOUT: DEF_TIMEOUT,
+    'DEF_TIMEOUT': DEF_TIMEOUT,
     'timeout': timeout,
     'build_url': build_url,
-    'each': each
+    'each': each,
+    'uuid': generate_uuid
 };

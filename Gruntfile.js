@@ -4,7 +4,7 @@ module.exports = function (grunt) {
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
     clean: {
-      coreDist: ["core/dist", "modern/dist"]
+      coreDist: ["modern/dist", "webos/dist", "sencha/dist"]
     },
     shell: {
       buildLegacy: {
@@ -16,24 +16,19 @@ module.exports = function (grunt) {
         files: {
           'modern/dist/pubnub.min.js': ['modern/dist/pubnub.js']
         }
+      },
+      sencha: {
+        files: {
+          'sencha/dist/pubnub.min.js': ['sencha/dist/pubnub.js']
+        }
+      },
+      webos: {
+        files: {
+          'webos/dist/pubnub.min.js': ['webos/dist/pubnub.js']
+        }
       }
     },
     webpack: {
-      core: {
-        // webpack options
-        entry: "./core/lib/pubnub-common.js",
-        module: {
-          loaders: [
-            { test: /\.json/, loader: "json" }
-          ]
-        },
-        output: {
-          path: "./core/dist",
-          filename: "pubnub-core.js",
-          library: "PubNubCore",
-          libraryTarget: "umd"
-        }
-      },
       modernWeb: {
         // webpack options
         entry: "./modern/lib/modern.js",
@@ -44,6 +39,36 @@ module.exports = function (grunt) {
         },
         output: {
           path: "./modern/dist",
+          filename: "pubnub.js",
+          library: "PUBNUB",
+          libraryTarget: "umd"
+        }
+      },
+      sencha: {
+        // webpack options
+        entry: "./sencha/lib/sencha.js",
+        module: {
+          loaders: [
+            { test: /\.json/, loader: "json" }
+          ]
+        },
+        output: {
+          path: "./sencha/dist",
+          filename: "pubnub.js",
+          library: "PUBNUB",
+          libraryTarget: "umd"
+        }
+      },
+      webos: {
+        // webpack options
+        entry: "./webos/lib/webos.js",
+        module: {
+          loaders: [
+            { test: /\.json/, loader: "json" }
+          ]
+        },
+        output: {
+          path: "./webos/dist",
           filename: "pubnub.js",
           library: "PUBNUB",
           libraryTarget: "umd"
@@ -87,8 +112,8 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-contrib-uglify');
 
   // tasks to build core
-  grunt.registerTask("minify", ["uglify:modernWeb"]);
-  grunt.registerTask('build', ['clean:coreDist', 'webpack:core', 'webpack:modernWeb', "minify"]);
+  grunt.registerTask("minify", ["uglify:modernWeb", "uglify:sencha", "uglify:webos"]);
+  grunt.registerTask('build', ['clean', 'webpack:modernWeb', 'webpack:sencha', 'webpack:webos', 'minify']);
   grunt.registerTask('build_legacy', ['build', 'shell:buildLegacy']);
 
   grunt.registerTask('test', ["eslint", "test:mocha", "test:unit"]);
