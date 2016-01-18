@@ -28,8 +28,8 @@
  THE SOFTWARE.
  --------------------------------------------------------------------------- */
 
-var pubNubCore = require("../../core/lib/core.js");
-var cryptoObj = require("../../core/vendor/crypto/crypto-obj");
+var pubNubCore = require("../../core/lib/core");
+var cryptoObj = require("../../core/lib/crypto-obj");
 var packageInformation = require("../../package.json");
 
 var hmacSHA256 = require("crypto-js/hmac-sha256");
@@ -134,8 +134,8 @@ function xdr( setup ) {
             return;
         }
       }
-    }
-    data['pnsdk'] = PNSDK;
+    };
+
     var url = pubNubCore.build_url(setup.url, data);
     xhr.open( 'GET', url, async);
     if (async) xhr.timeout = xhrtme;
@@ -298,7 +298,7 @@ function CREATE_PUBNUB(setup) {
   setup['error'] = setup['error'] || error;
   setup['hmac_SHA256']= get_hmac_SHA256;
   setup['crypto_obj'] = cryptoObj();
-  setup['params']      = { 'pnsdk' : PNSDK }
+  setup['params']      = { 'pnsdk' : CREATE_PUBNUB.PNSDK };
 
   var SELF = function(setup) {
     return CREATE_PUBNUB(setup);

@@ -1,5 +1,5 @@
 var frontendCore = require("../../modern/lib/frontend-core");
-var cryptoObj = require("../../core/vendor/crypto/crypto-obj");
+var cryptoObj = require("../../core/lib/crypto-obj");
 
 var exportedObj = frontendCore("Sencha");
 exportedObj.init = exportedObj;

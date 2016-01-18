@@ -26,6 +26,21 @@ module.exports = function (grunt) {
         files: {
           'webos/dist/pubnub.min.js': ['webos/dist/pubnub.js']
         }
+      },
+      phonegap: {
+        files: {
+          'phonegap/dist/pubnub.min.js': ['phonegap/dist/pubnub.js']
+        }
+      },
+      tv: {
+        files: {
+          'smart-tv/dist/pubnub.min.js': ['smart-tv/dist/pubnub.js']
+        }
+      },
+      parse: {
+        files: {
+          'parse/dist/pubnub.min.js': ['parse/dist/pubnub.js']
+        }
       }
     },
     webpack: {
@@ -73,19 +88,65 @@ module.exports = function (grunt) {
           library: "PUBNUB",
           libraryTarget: "umd"
         }
-      }
-    },
-    browserify: {
-      core: {
-        src: ['core/lib/**/*.js'],
-        dest: 'core/dist/pubnub-core.js',
-        options: {
-          external: ['jquery', 'momentWrapper']
+      },
+      phonegap: {
+        // webpack options
+        entry: "./phonegap/lib/phonegap.js",
+        module: {
+          loaders: [
+            { test: /\.json/, loader: "json" }
+          ]
+        },
+        output: {
+          path: "./phonegap/dist",
+          filename: "pubnub.js",
+          library: "PUBNUB",
+          libraryTarget: "umd"
+        }
+      },
+      tv: {
+        // webpack options
+        entry: "./smart-tv/lib/tv.js",
+        module: {
+          loaders: [
+            { test: /\.json/, loader: "json" }
+          ]
+        },
+        output: {
+          path: "./smart-tv/dist",
+          filename: "pubnub.js",
+          library: "PUBNUB",
+          libraryTarget: "umd"
+        }
+      },
+      parse: {
+        // webpack options
+        entry: "./parse/lib/parse.js",
+        module: {
+          loaders: [
+            { test: /\.json/, loader: "json" }
+          ]
+        },
+        output: {
+          path: "./parse/dist",
+          filename: "pubnub.js",
+          library: ["PUBNUB"],
+          libraryTarget: "umd"
         }
       }
     },
     eslint: {
-      target: ['node.js/*.js', 'modern/lib/**.js', 'parse/*.js', 'core/vendor/crypto/crypto-obj.js']
+      target: [
+        'core/lib/**/*.js',
+        'node.js/*.js',
+        'modern/lib/**.js',
+        'webos/lib/**.js',
+        'sencha/lib/**.js',
+        'titanium/lib/**.js',
+        'parse/lib/**.js',
+        'phonegap/*.js',
+        'titanium/*.js'
+        ]
     },
     mochaTest: {
       test: {
@@ -112,8 +173,7 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-contrib-uglify');
 
   // tasks to build core
-  grunt.registerTask("minify", ["uglify:modernWeb", "uglify:sencha", "uglify:webos"]);
-  grunt.registerTask('build', ['clean', 'webpack:modernWeb', 'webpack:sencha', 'webpack:webos', 'minify']);
+  grunt.registerTask('build', ['clean', 'webpack', 'uglify']);
   grunt.registerTask('build_legacy', ['build', 'shell:buildLegacy']);
 
   grunt.registerTask('test', ["eslint", "test:mocha", "test:unit"]);

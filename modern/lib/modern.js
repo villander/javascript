@@ -1,7 +1,7 @@
-var frontendCore = require("../../modern/lib/frontend-core");
+var frontendCore = require("./frontend-core");
 var cryptoObj = require("../../core/lib/crypto-obj");
 
-var exportedObj = frontendCore("Webos");
+var exportedObj = frontendCore("Modern");
 exportedObj.init = exportedObj;
 exportedObj.secure = exportedObj;
 exportedObj.crypto_obj = cryptoObj();
