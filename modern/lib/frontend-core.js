@@ -230,6 +230,39 @@ function attr( node, attribute, value ) {
 }
 
 /**
+ * EVENTS
+ * ======
+ * PUBNUB.events.bind( 'you-stepped-on-flower', function(message) {
+ *     // Do Stuff with message
+ * } );
+ *
+ * PUBNUB.events.fire( 'you-stepped-on-flower', "message-data" );
+ * PUBNUB.events.fire( 'you-stepped-on-flower', {message:"data"} );
+ * PUBNUB.events.fire( 'you-stepped-on-flower', [1,2,3] );
+ *
+ */
+var events = {
+  'list'   : {},
+  'unbind' : function( name ) { events.list[name] = [] },
+  'bind'   : function( name, fun ) {
+    (events.list[name] = events.list[name] || []).push(fun);
+  },
+  'fire' : function( name, data ) {
+    pubNubCore.each(
+      events.list[name] || [],
+      function(fun) { fun(data) }
+    );
+  }
+};
+
+/**
+ * HEAD
+ * ====
+ * head().appendChild(elm);
+ */
+function head() { return search('head')[0] }
+
+/**
  * $
  * =
  * var div = $('divid');
@@ -310,11 +343,16 @@ function CREATE_PUBNUB(setup) {
     }
   }
 
+  // head
+  // events
+
   SELF['init'] = SELF;
   SELF['$'] = $;
   SELF['attr'] = attr;
   SELF['search'] = search;
   SELF['bind'] = bind;
+  SELF['head'] = head;
+  SELF['events'] = events;
   SELF['css'] = css;
   SELF['create'] = create;
   SELF['crypto_obj'] = cryptoObj();
@@ -342,4 +380,3 @@ function CREATE_PUBNUB(setup) {
 }
 
 module.exports = prepareSDK;
-

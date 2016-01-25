@@ -6412,7 +6412,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  'timeout': timeout,
 	  'build_url': build_url,
 	  'each': each,
-	  'uuid': generate_uuid
+	  'uuid': generate_uuid,
 	};
 
 
