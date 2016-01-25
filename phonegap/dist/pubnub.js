@@ -55,14 +55,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	var frontendCore = __webpack_require__(1);
-	var cryptoObj = __webpack_require__(5);
-
-	var exportedObj = frontendCore("Phonegap");
-	exportedObj.init = exportedObj;
-	exportedObj.secure = exportedObj;
-	exportedObj.crypto_obj = cryptoObj();
-
-	module.exports = exportedObj;
+	module.exports = frontendCore("Phonegap");
 
 /***/ },
 /* 1 */
@@ -391,7 +384,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	  CREATE_PUBNUB.PNSDK = 'PubNub-JS-' + sdkPlatform + '/' + packageInformation.version;
 
-	  return CREATE_PUBNUB
+	  return CREATE_PUBNUB({})
 	}
 
 	function CREATE_PUBNUB(setup) {

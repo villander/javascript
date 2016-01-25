@@ -321,7 +321,7 @@ function prepareSDK(sdkPlatform){
 
   CREATE_PUBNUB.PNSDK = 'PubNub-JS-' + sdkPlatform + '/' + packageInformation.version;
 
-  return CREATE_PUBNUB
+  return CREATE_PUBNUB({})
 }
 
 function CREATE_PUBNUB(setup) {
