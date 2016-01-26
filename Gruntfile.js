@@ -144,8 +144,7 @@ module.exports = function (grunt) {
         'sencha/lib/**.js',
         'titanium/lib/**.js',
         'parse/lib/**.js',
-        'phonegap/*.js',
-        'titanium/*.js'
+        'phonegap/*.js'
         ]
     },
     mochaTest: {

@@ -2637,6 +2637,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  'build_url': build_url,
 	  'each': each,
 	  'uuid': generate_uuid,
+	  'URLBIT': URLBIT,
+	  'XH': XHRTME
 	};
 
 
