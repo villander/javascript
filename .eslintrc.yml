@@ -1,10 +1,13 @@
+extends: airbnb/legacy # TODO: add es6 compiler and move away from legacy.
 plugins:
   - react
 rules:
-  no-undef: 2
-env:
-  browser: true,
-  node: true,
-  amd: false,
-  mocha: false,
-  jasmine: false
+  func-names: 0
+  new-cap: 0
+  no-param-reassign: 0
+  vars-on-top: 0
+  comma-dangle: 0
+  no-else-return: 0
+  max-len: 0
+  no-shadow: 0
+  wrap-iife: 0
