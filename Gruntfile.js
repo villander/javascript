@@ -52,7 +52,8 @@ module.exports = function (grunt) {
         'node.js/tests/integration/stubbed/**/*.js',
         'node.js/tests/unit/**/*.js',
         'node.js/*.js',
-        'node.js/lib/*.js'
+        'node.js/lib/*.js',
+        'modern/lib/*.js'
       ]
     }
   });

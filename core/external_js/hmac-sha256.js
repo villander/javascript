@@ -69,3 +69,7 @@ CryptoJS.mode.ECB = (function () {
 
     return ECB;
 }());
+
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+  module.exports = CryptoJS;
+}
