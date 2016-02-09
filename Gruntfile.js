@@ -3,6 +3,9 @@ module.exports = function (grunt) {
 
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
+    clean: {
+      coreDist: ['parse/dist']
+    },
     env: {
       lockdown: {
         VCR_MODE: 'playback'
@@ -10,6 +13,10 @@ module.exports = function (grunt) {
       record: {
         VCR_MODE: 'cache'
       }
+    },
+    exec: {
+      make_clean: 'make clean',
+      make: 'make'
     },
     mocha_istanbul: {
       coverage_integration: {
@@ -42,9 +49,27 @@ module.exports = function (grunt) {
       default: {
         options: {
           coverageFolder: 'coverage/**',
-          check: {
-          }
+          check: {}
         }
+      }
+    },
+    webpack: {
+      parse: {
+        // webpack options
+        entry: './parse/lib/platform.js',
+        module: {
+          loaders: [
+            { test: /\.json/, loader: 'json' },
+            { test: /\.js$/, exclude: /node_modules/, loader: 'babel-loader' }
+          ]
+        },
+        output: {
+          path: './parse/dist',
+          filename: 'pubnub.js',
+          library: ['PUBNUB'],
+          libraryTarget: 'umd'
+        },
+        externals: ['crypto', 'buffer']
       }
     },
     eslint: {
@@ -52,16 +77,21 @@ module.exports = function (grunt) {
         'node.js/tests/integration/stubbed/**/*.js',
         'node.js/tests/unit/**/*.js',
         'node.js/*.js',
-        'node.js/lib/*.js'
+        'node.js/lib/*.js',
+        'parse/lib/*.js'
       ]
     }
   });
 
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-mocha-istanbul');
+  grunt.loadNpmTasks('grunt-webpack');
+  grunt.loadNpmTasks('grunt-exec');
 
   grunt.registerTask('lockdown', ['env:lockdown']);
   grunt.registerTask('record', ['env:record']);
+
+  grunt.registerTask('compile', ['clean', 'exec:make_clean', 'exec:make', 'webpack']);
 
   grunt.registerTask('test-old', ['mocha_istanbul:old']);
   grunt.registerTask('test-unit', ['mocha_istanbul:coverage_unit']);
