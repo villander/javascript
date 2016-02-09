@@ -9,7 +9,7 @@ all: build
 .PHONY	: build
 build: $(PUBNUB_JS)
 
-$(PUBNUB_JS) : $(JSON_JS) $(PUBNUB_COMMON_JS) $(PUBNUB_PLATFORM_JS)
+$(PUBNUB_JS) : $(PUBNUB_COMMON_JS) $(PUBNUB_PLATFORM_JS)
 	$(ECHO) -n "// " > $(PUBNUB_JS)
 	$(ECHO) $(VERSION) >> $(PUBNUB_JS)
 	$(ECHO) "(function(){" >> $(PUBNUB_JS)
